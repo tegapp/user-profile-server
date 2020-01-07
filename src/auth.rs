@@ -79,7 +79,7 @@ pub async fn upsert_user(
     println!("validated auth0 user: {:?}", auth0_user);
 
     let new_user = NewUser {
-        auth0_id: "test",
+        auth0_id: &auth0_user.sub.as_str(),
     };
 
     let user = diesel::insert_into(users::table)
