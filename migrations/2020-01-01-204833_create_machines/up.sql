@@ -1,6 +1,11 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    auth0_id TEXT NOT NULL
+    auth0_id TEXT NOT NULL,
+    name TEXT,
+    email TEXT,
+    email_verified BOOLEAN NOT NULL,
+    phone_number TEXT,
+    phone_number_verified BOOLEAN NOT NULL
 );
 
 CREATE TABLE machines (

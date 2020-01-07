@@ -10,7 +10,7 @@ extern crate serde;
 extern crate serde_json;
 
 
-use diesel::prelude::*;
+// use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ Pool, PooledConnection, ConnectionManager };
 use dotenv::dotenv;
@@ -24,8 +24,6 @@ pub mod graphql_schema;
 pub mod context;
 pub mod auth;
 
-use self::user::{ User, NewUser };
-
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 pub type PgPooledConnection = PooledConnection<ConnectionManager<PgConnection>>;
 
@@ -37,19 +35,6 @@ pub fn establish_db_connection() -> PgPool {
     let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
     Pool::builder().build(manager)
         .expect(&format!("Error connecting to {}", database_url))
-}
-
-pub fn create_user<'a>(conn: &PgConnection, auth0_id: &'a str) -> User {
-    use schema::users;
-
-    let new_user = NewUser {
-        auth0_id,
-    };
-
-    diesel::insert_into(users::table)
-        .values(&new_user)
-        .get_result(conn)
-        .expect("Error saving new post")
 }
 
 fn main() {

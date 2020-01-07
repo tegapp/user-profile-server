@@ -27,6 +27,11 @@ use serde::{ Deserialize };
 #[derive(Deserialize, Debug)]
 pub struct Auth0User {
     sub: String,
+    name: Option<String>,
+    email: Option<String>,
+    email_verified: bool,
+    phone_number: Option<String>,
+    phone_number_verified: bool,
 }
 
 pub async fn validate_auth0_user(
@@ -75,15 +80,24 @@ pub async fn upsert_user(
 
     use crate::diesel::RunQueryDsl;
     use super::schema::users;
+    use super::schema::users::dsl;
 
     println!("validated auth0 user: {:?}", auth0_user);
 
     let new_user = NewUser {
         auth0_id: &auth0_user.sub.as_str(),
+        name: auth0_user.name,
+        email: auth0_user.email,
+        email_verified: auth0_user.email_verified,
+        phone_number: auth0_user.phone_number,
+        phone_number_verified: auth0_user.phone_number_verified,
     };
 
     let user = diesel::insert_into(users::table)
         .values(&new_user)
+        .on_conflict(dsl::auth0_id)
+        .do_update()
+        .set(&new_user)
         .get_result(&pool.get().map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
 

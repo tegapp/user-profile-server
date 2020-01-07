@@ -12,6 +12,11 @@ table! {
     users (id) {
         id -> Int4,
         auth0_id -> Text,
+        name -> Nullable<Text>,
+        email -> Nullable<Text>,
+        email_verified -> Bool,
+        phone_number -> Nullable<Text>,
+        phone_number_verified -> Bool,
     }
 }
 
