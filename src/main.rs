@@ -30,8 +30,8 @@ pub type PgPooledConnection = PooledConnection<ConnectionManager<PgConnection>>;
 pub fn establish_db_connection() -> PgPool {
     dotenv().ok();
 
-    let database_url = env::var("POSTGRESQL_ADDON_URI")
-        .expect("$POSTGRESQL_ADDON_URI must be set");
+    let database_url = env::var("DATABASE_URL")
+        .expect("$DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
     Pool::builder().build(manager)
         .expect(&format!("Error connecting to {}", database_url))
