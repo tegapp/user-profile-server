@@ -31,7 +31,7 @@ pub fn run(pool: PgPool) {
         .parse()
         .expect("Invalid $PORT");
 
-    let addr = ([127, 0, 0, 1], port).into();
+    let addr = ([0, 0, 0, 0], port).into();
 
     // let pool = Arc::new(pool);
     let root_node = Arc::new(Schema::new(Query, Mutation{}));
