@@ -34,7 +34,7 @@ pub fn establish_db_connection() -> PgPool {
         .expect("$POSTGRESQL_ADDON_URI must be set");
     let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
     Pool::builder()
-        .max_size(5)
+        .max_size(2)
         .build(manager)
         .expect(&format!("Error connecting to {}", database_url))
 }
