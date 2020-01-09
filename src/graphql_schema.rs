@@ -65,6 +65,10 @@ impl Query {
     fn my() -> FieldResult<MyNamespace> {
         Ok(MyNamespace)
     }
+
+    fn is_authenticated_for(machine_id: String) -> bool {
+        true
+    }
 }
 
 // Now, we do the same for our Mutation type.
