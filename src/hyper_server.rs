@@ -19,12 +19,19 @@ use futures03::future::{FutureExt, TryFutureExt};
 use super::graphql_schema::{ Query, Mutation, Schema };
 use super::context::Context;
 
+use std::env;
+
 use super::auth::{ upsert_user };
 
 pub fn run(pool: PgPool) {
     pretty_env_logger::init();
 
-    let addr = ([127, 0, 0, 1], 3000).into();
+    let port = env::var("PORT")
+        .expect("$PORT must be set")
+        .parse()
+        .expect("Invalid $PORT");
+
+    let addr = ([127, 0, 0, 1], port).into();
 
     // let pool = Arc::new(pool);
     let root_node = Arc::new(Schema::new(Query, Mutation{}));
