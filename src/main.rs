@@ -33,7 +33,9 @@ pub fn establish_db_connection() -> PgPool {
     let database_url = env::var("DATABASE_URL")
         .expect("$DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
-    Pool::builder().build(manager)
+    Pool::builder()
+        .max_size(5)
+        .build(manager)
         .expect(&format!("Error connecting to {}", database_url))
 }
 
