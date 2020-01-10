@@ -37,7 +37,7 @@ pub struct Auth0User {
 pub async fn validate_auth0_user(
     bearer_auth: &str,
 ) -> Result<Auth0User, String> {
-    use reqwest::header::{ HeaderMap, AUTHORIZATION };
+    use reqwest::header::{ HeaderMap };
 
     let auth0_url = "thirtybots-dev.eu.auth0.com".to_string();
     let auth0_url = format!("https://{}/userinfo", auth0_url);
