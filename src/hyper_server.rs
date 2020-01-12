@@ -106,7 +106,7 @@ async fn serve_req<'a>(
             // *response.status_mut() = StatusCode::NOT_FOUND;
             Ok(response)
         }
-        (&Method::OPTIONS, "/") => {
+        (&Method::OPTIONS, _) => {
             let mut resp = Response::new(Body::empty());
             *resp.status_mut() = StatusCode::NO_CONTENT;
 
