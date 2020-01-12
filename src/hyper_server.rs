@@ -106,6 +106,31 @@ async fn serve_req<'a>(
             // *response.status_mut() = StatusCode::NOT_FOUND;
             Ok(response)
         }
+        (&Method::OPTIONS, "/") => {
+            let mut resp = Response::new(Body::empty());
+            *resp.status_mut() = StatusCode::NO_CONTENT;
+
+            use hyper::header::{
+                ACCESS_CONTROL_ALLOW_ORIGIN,
+                ACCESS_CONTROL_ALLOW_METHODS,
+                ACCESS_CONTROL_MAX_AGE,
+            };
+
+            resp.headers_mut().insert(
+                ACCESS_CONTROL_ALLOW_ORIGIN,
+                "*".parse().unwrap(),
+            );
+            resp.headers_mut().insert(
+                ACCESS_CONTROL_ALLOW_METHODS,
+                "POST, GET, OPTIONS, DELETE".parse().unwrap(),
+            );
+            resp.headers_mut().insert(
+                ACCESS_CONTROL_MAX_AGE,
+                "86400".parse().unwrap(),
+            );
+
+            Ok(resp)
+        }
         (&Method::POST, "/graphql") => {
             let user = upsert_user(
                 Arc::clone(&pool),
