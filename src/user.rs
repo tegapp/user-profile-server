@@ -1,6 +1,6 @@
 use super::schema::{users};
 
-#[derive(Identifiable, Queryable)]
+#[derive(Identifiable, Queryable, Debug)]
 pub struct User {
     pub id: i32,
     pub auth0_id: String,

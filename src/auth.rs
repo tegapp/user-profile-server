@@ -29,8 +29,10 @@ pub struct Auth0User {
     sub: String,
     name: Option<String>,
     email: Option<String>,
+    #[serde(default)]
     email_verified: bool,
     phone_number: Option<String>,
+    #[serde(default)]
     phone_number_verified: bool,
 }
 
@@ -48,19 +50,22 @@ pub async fn validate_auth0_user(
     let mut headers = HeaderMap::new();
     headers.insert(AUTHORIZATION, bearer_auth);
 
-    let auth0_user = reqwest::Client::new()
+    let res = reqwest::Client::new()
         .post(&auth0_url)
         .headers(headers)
         .send()
         .await
         .map_err(|err| err.to_string())?
         .error_for_status()
-        .map_err(|err| err.to_string())?
+        .map_err(|err| err.to_string())?;
+
+    // println!("response body: {:?}", res.text().await);
+    // Err("".to_string())
+
+    let auth0_user = res
         .json::<Auth0User>()
         .await
         .map_err(|err| err.to_string())?;
-
-    println!("auth0 response: {:#?}", auth0_user);
 
     Ok(auth0_user)
 }
@@ -76,13 +81,15 @@ pub async fn upsert_user(
         .to_str()
         .map_err(|_| "Invalid Bearer Authentication".to_string())?;
 
+    // println!("AUTH: {:?}", bearer_auth);
+
     let auth0_user = validate_auth0_user(bearer_auth).await?;
 
     use crate::diesel::RunQueryDsl;
     use super::schema::users;
     use super::schema::users::dsl;
 
-    println!("validated auth0 user: {:?}", auth0_user);
+    // println!("validated auth0 user: {:?}", auth0_user);
 
     let new_user = NewUser {
         auth0_id: &auth0_user.sub.as_str(),

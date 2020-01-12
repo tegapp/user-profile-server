@@ -1,6 +1,6 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    auth0_id TEXT NOT NULL,
+    auth0_id TEXT UNIQUE NOT NULL,
     name TEXT,
     email TEXT,
     email_verified BOOLEAN NOT NULL,

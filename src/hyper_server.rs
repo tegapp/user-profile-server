@@ -7,9 +7,9 @@ extern crate pretty_env_logger;
 use juniper::{
     http::GraphQLRequest as JuniperGraphQLRequest,
     // serde::Deserialize,
-    DefaultScalarValue,
+    // DefaultScalarValue,
     // GraphQLType,
-    InputValue,
+    // InputValue,
     // RootNode, ScalarRefValue, ScalarValue,
     // Variables,
 };
@@ -87,10 +87,19 @@ use super::auth::{ upsert_user };
 // }
 
 fn server_error (message: &str) -> Response<Body> {
-    let mut response = Response::new(Body::empty());
-    *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-    *response.body_mut() = Body::from(message.to_string());
-    response
+    let mut resp = Response::new(Body::empty());
+    use hyper::header::{
+        ACCESS_CONTROL_ALLOW_ORIGIN,
+    };
+
+    resp.headers_mut().insert(
+        ACCESS_CONTROL_ALLOW_ORIGIN,
+        "*".parse().unwrap(),
+    );
+
+    *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+    *resp.body_mut() = Body::from(message.to_string());
+    resp
 }
 
 async fn serve_req<'a>(
@@ -113,6 +122,7 @@ async fn serve_req<'a>(
             use hyper::header::{
                 ACCESS_CONTROL_ALLOW_ORIGIN,
                 ACCESS_CONTROL_ALLOW_METHODS,
+                ACCESS_CONTROL_ALLOW_HEADERS,
                 ACCESS_CONTROL_MAX_AGE,
             };
 
@@ -123,6 +133,10 @@ async fn serve_req<'a>(
             resp.headers_mut().insert(
                 ACCESS_CONTROL_ALLOW_METHODS,
                 "POST, GET, OPTIONS, DELETE".parse().unwrap(),
+            );
+            resp.headers_mut().insert(
+                ACCESS_CONTROL_ALLOW_HEADERS,
+                "*".parse().unwrap(),
             );
             resp.headers_mut().insert(
                 ACCESS_CONTROL_MAX_AGE,
@@ -151,47 +165,49 @@ async fn serve_req<'a>(
                 let body = hyper::body::to_bytes(req.into_body()).await;
 
                 if let Ok(body) = body {
-                    let mut query = None;
-                    let operation_name = None;
-                    let mut variables = None;
+                    // let mut query = None;
+                    // let operation_name = None;
+                    // let mut variables = None;
 
-                    for (key, value) in url::form_urlencoded::parse(&body).into_owned() {
-                        match key.as_ref() {
-                            "query" => {
-                                if query.is_some() {
-                                    return Ok(server_error("cannot set query twice"));
-                                }
-                                query = Some(value)
-                            }
-                            "operationName" => {
-                                if operation_name.is_some() {
-                                    return Ok(server_error("cannot set operationName twice"));
-                                }
-                            }
-                            "variables" => {
-                                if variables.is_some() {
-                                    return Ok(server_error("cannot set variables twice"));
-                                }
-                                match serde_json::from_str::<InputValue<DefaultScalarValue>>(&value)
-                                {
-                                    Ok(parsed_variables) => variables = Some(parsed_variables),
-                                    Err(_) => {
-                                        return Ok(server_error("invalid variables"));
-                                    },
-                                }
-                            }
-                            _ => continue,
-                        }
-                    };
+                    // for (key, value) in url::form_urlencoded::parse(&body).into_owned() {
+                    //     match key.as_ref() {
+                    //         "query" => {
+                    //             if query.is_some() {
+                    //                 return Ok(server_error("cannot set query twice"));
+                    //             }
+                    //             query = Some(value)
+                    //         }
+                    //         "operationName" => {
+                    //             if operation_name.is_some() {
+                    //                 return Ok(server_error("cannot set operationName twice"));
+                    //             }
+                    //         }
+                    //         "variables" => {
+                    //             if variables.is_some() {
+                    //                 return Ok(server_error("cannot set variables twice"));
+                    //             }
+                    //             match serde_json::from_str::<InputValue<DefaultScalarValue>>(&value)
+                    //             {
+                    //                 Ok(parsed_variables) => variables = Some(parsed_variables),
+                    //                 Err(_) => {
+                    //                     return Ok(server_error("invalid variables"));
+                    //                 },
+                    //             }
+                    //         }
+                    //         _ => continue,
+                    //     }
+                    // };
 
                     // let variables = variables
                     //     .and_then(|v| v.to_object_value())
                     //     .map(|v| Variables::new(v))
                     //     .unwrap_or(Variables::new());
 
-                    match query {
-                        Some(query) => {
-                            let graphql_req = JuniperGraphQLRequest::new(query, operation_name, variables);
+                    let graphql_req = serde_json::from_slice::<JuniperGraphQLRequest>(&body);
+
+                    match graphql_req {
+                        Ok(graphql_req) => {
+                            // let graphql_req = JuniperGraphQLRequest::new(query, operation_name, variables);
                             
                             let graphql_result = graphql_req.execute(
                                 &root_node, 
@@ -207,8 +223,16 @@ async fn serve_req<'a>(
                             let mut resp = Response::new(Body::empty());
                             *resp.status_mut() = code;
 
-                            use hyper::header::{CONTENT_TYPE};
+                            use hyper::header::{
+                                CONTENT_TYPE,
+                                ACCESS_CONTROL_ALLOW_ORIGIN,
+                            };
 
+                            resp.headers_mut().insert(
+                                ACCESS_CONTROL_ALLOW_ORIGIN,
+                                "*".parse().unwrap(),
+                            );
+                
                             resp.headers_mut().insert(
                                 CONTENT_TYPE,
                                 "application/json".parse().unwrap(),
@@ -227,17 +251,30 @@ async fn serve_req<'a>(
                             //     &ctx,
                             // );
                         },
-                        None => {
-                            return Ok(server_error("'query' parameter is missing"));
+                        Err(err) => {
+                            return Ok(server_error(&err.to_string()));
                         },
                     }
                 } else {
                     Ok(server_error("Invalid form post"))
                 }
             } else {
-                let mut response = Response::new(Body::empty());
-                *response.status_mut() = StatusCode::UNAUTHORIZED;
-                Ok(response)
+                println!("Unauthorized {:?}", user);
+
+                let mut resp = Response::new(Body::empty());
+
+                use hyper::header::{
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
+                };
+
+                resp.headers_mut().insert(
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
+                    "*".parse().unwrap(),
+                );
+    
+
+                *resp.status_mut() = StatusCode::UNAUTHORIZED;
+                Ok(resp)
             }
         }
         _ => {
