@@ -136,7 +136,7 @@ async fn serve_req<'a>(
             );
             resp.headers_mut().insert(
                 ACCESS_CONTROL_ALLOW_HEADERS,
-                "*".parse().unwrap(),
+                "Authorization, Content-Type, contenttype".parse().unwrap(),
             );
             resp.headers_mut().insert(
                 ACCESS_CONTROL_MAX_AGE,
