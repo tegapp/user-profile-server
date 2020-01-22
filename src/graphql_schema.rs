@@ -23,7 +23,7 @@ impl MyNamespace {
     // To gain access to the context, we specify a argument
     // that is a reference to the Context type.
     // Juniper automatically injects the correct context here.
-    fn machines(context: &Context, id: Option<String>) -> FieldResult<Vec<Machine>> {
+    fn machines(context: &Context, slug: Option<String>) -> FieldResult<Vec<Machine>> {
         use diesel::QueryDsl;
         use diesel::RunQueryDsl;
         use diesel::ExpressionMethods;
@@ -34,15 +34,11 @@ impl MyNamespace {
         let query = dsl::machines
             .filter(dsl::user_id.eq(context.user_id));
 
-        if let Some(id) = id {
-            if let Ok(id) = id.parse::<i32>() {
-                let results = query
-                    .find(id)
-                    .get_results(&context.db()?)?;
-                return Ok(results)
-            } else {
-                return Err(FieldError::from(format!("Invalid ID {}", id)))
-            }
+        if let Some(slug) = slug {
+            let results = query
+                .filter(dsl::slug.eq(slug))
+                .get_results(&context.db()?)?;
+            return Ok(results)
         } else {
             return Ok(query.get_results(&context.db()?)?);
         }
