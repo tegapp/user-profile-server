@@ -17,5 +17,4 @@ CREATE TABLE machines (
     public_key TEXT NOT NULL,
     name TEXT NOT NULL,
     slug TEXT NOT NULL
-
 );
