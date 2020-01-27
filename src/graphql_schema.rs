@@ -3,12 +3,12 @@ use juniper::{FieldResult, FieldError};
 use super::machine::{ Machine, CreateMachine, SetMachineName };
 use super::context::Context;
 
-// #[derive(juniper::GraphQLEnum)]
-// enum Episode {
-//     NewHope,
-//     Empire,
-//     Jedi,
-// }
+fn unauthorized() -> FieldError {
+    FieldError::new(
+        "Unauthorized Access".to_string(),
+        graphql_value!({ "internal_error": "Unauthorized" }),
+    )
+}
 
 pub struct MyNamespace;
 
@@ -30,9 +30,11 @@ impl MyNamespace {
         
         use super::schema::machines::dsl;
 
+        let user_id = context.user_id.ok_or(unauthorized())?;
+
         // let results = machines::table.load::<Machine>(&context.db()?);
         let query = dsl::machines
-            .filter(dsl::user_id.eq(context.user_id));
+            .filter(dsl::user_id.eq(user_id));
 
         if let Some(slug) = slug {
             let results = query
@@ -62,8 +64,8 @@ impl Query {
         Ok(MyNamespace)
     }
 
-    fn is_authenticated_for(machine_id: String) -> bool {
-        true
+    fn is_authenticated_for(context: &Context, machine_id: String) -> bool {
+        context.user_id.is_some()
     }
 }
 
@@ -81,8 +83,10 @@ impl Mutation {
         use super::schema::machines;
         use super::machine::{ NewMachineSQL };
 
+        let user_id = context.user_id.ok_or(unauthorized())?;
+
         let machine = NewMachineSQL {
-            user_id: context.user_id,
+            user_id,
             public_key: input.public_key,
             name: input.name,
             slug: input.slug,
@@ -104,13 +108,15 @@ impl Mutation {
         use super::schema::machines::dsl;
         use super::machine::{ SetMachineNameSQL };
 
+        let user_id = context.user_id.ok_or(unauthorized())?;
+
         let machine = SetMachineNameSQL {
             name: input.name,
         };
 
         let result = diesel::update(
             dsl::machines
-                .filter(dsl::user_id.eq(context.user_id))
+                .filter(dsl::user_id.eq(user_id))
                 .find(input.id.parse::<i32>()?)
         )
             .set(&machine)
@@ -126,9 +132,11 @@ impl Mutation {
         
         use super::schema::machines::dsl;
 
+        let user_id = context.user_id.ok_or(unauthorized())?;
+
         diesel::delete(
             dsl::machines
-                .filter(dsl::user_id.eq(context.user_id))
+                .filter(dsl::user_id.eq(user_id))
                 .find(machine_id.parse::<i32>()?)
         )
             .execute(&context.db()?)?;

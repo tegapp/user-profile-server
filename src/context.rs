@@ -4,7 +4,7 @@ use super::PgPooledConnection;
 
 pub struct Context {
     pub pool: PgPool,
-    pub user_id: i32,
+    pub user_id: Option<i32>,
 }
 
 // To make our context usable by Juniper, we have to implement a marker trait.

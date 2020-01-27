@@ -72,8 +72,8 @@ pub async fn validate_auth0_user(
 
 pub async fn upsert_user(
     pool: PgPool,
-    req: hyper::Request<hyper::Body>,
-) -> Result<(User, hyper::Request<hyper::Body>), String> {
+    req: &hyper::Request<hyper::Body>,
+) -> Result<User, String> {
     let auth_header = req.headers().get(AUTHORIZATION);
 
     let bearer_auth = auth_header
@@ -108,7 +108,7 @@ pub async fn upsert_user(
         .get_result(&pool.get().map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
 
-    Ok((user, req))
+    Ok(user)
 }
 
 #[cfg(test)]
