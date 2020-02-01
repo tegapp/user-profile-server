@@ -36,7 +36,7 @@ pub struct CreateMachine {
     pub slug: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, AsChangeset)]
 #[table_name="machines"]
 pub struct NewMachineSQL {
     pub user_id: i32,

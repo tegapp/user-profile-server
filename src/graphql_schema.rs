@@ -1,5 +1,12 @@
 use juniper::{FieldResult, FieldError};
 
+use diesel::{
+    QueryDsl,
+    RunQueryDsl,
+    ExpressionMethods,
+};
+
+use super::user::{ User };
 use super::machine::{ Machine, CreateMachine, SetMachineName };
 use super::context::Context;
 
@@ -24,10 +31,6 @@ impl MyNamespace {
     // that is a reference to the Context type.
     // Juniper automatically injects the correct context here.
     fn machines(context: &Context, slug: Option<String>) -> FieldResult<Vec<Machine>> {
-        use diesel::QueryDsl;
-        use diesel::RunQueryDsl;
-        use diesel::ExpressionMethods;
-        
         use super::schema::machines::dsl;
 
         let user_id = context.user_id.ok_or(unauthorized())?;
@@ -64,6 +67,18 @@ impl Query {
         Ok(MyNamespace)
     }
 
+    fn current_user(context: &Context) -> FieldResult<User> {        
+        use super::schema::users::dsl;
+
+        let user_id = context.user_id.ok_or(unauthorized())?;
+
+        let result = dsl::users
+            .find(user_id)
+            .get_result(&context.db()?)?;
+
+        Ok(result)
+    }
+
     fn is_authenticated_for(context: &Context, machine_id: String) -> bool {
         context.user_id.is_some()
     }
@@ -80,7 +95,7 @@ impl Mutation {
     fn create_machine(context: &Context, input: CreateMachine) -> FieldResult<Machine> {
         use crate::diesel::RunQueryDsl;
         
-        use super::schema::machines;
+        use super::schema::machines::{self, dsl};
         use super::machine::{ NewMachineSQL };
 
         let user_id = context.user_id.ok_or(unauthorized())?;
@@ -94,17 +109,15 @@ impl Mutation {
 
         let result = diesel::insert_into(machines::table)
             .values(&machine)
-            .get_result(&context.db()?)
-            .expect("Error saving new post");
+            .on_conflict((dsl::user_id, dsl::slug))
+            .do_update()
+            .set(&machine)
+            .get_result(&context.db()?)?;
 
         Ok(result)
     }
 
     fn set_machine_name(context: &Context, input: SetMachineName) -> FieldResult<Machine> {
-        use diesel::QueryDsl;
-        use diesel::RunQueryDsl;
-        use diesel::ExpressionMethods;
-        
         use super::schema::machines::dsl;
         use super::machine::{ SetMachineNameSQL };
 
@@ -126,10 +139,6 @@ impl Mutation {
     }
 
     fn remove_machine(context: &Context, machine_id: String) -> FieldResult<Option<bool>> {
-        use diesel::QueryDsl;
-        use diesel::RunQueryDsl;
-        use diesel::ExpressionMethods;
-        
         use super::schema::machines::dsl;
 
         let user_id = context.user_id.ok_or(unauthorized())?;

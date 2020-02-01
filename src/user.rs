@@ -11,6 +11,24 @@ pub struct User {
     pub phone_number_verified: bool,
 }
 
+#[juniper::object(
+    description="A user"
+)]
+impl User {
+    fn id(&self) -> String {
+        self.id.to_string()
+    }
+    fn name(&self) -> &Option<String> {
+        &self.name
+    }
+    fn email(&self) -> &Option<String> {
+        &self.email
+    }
+    fn email_verified(&self) -> bool {
+        self.email_verified
+    }
+}
+
 #[derive(Insertable, AsChangeset)]
 #[table_name="users"]
 pub struct NewUser<'a> {
