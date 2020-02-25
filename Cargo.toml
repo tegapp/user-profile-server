@@ -9,14 +9,24 @@ edition = "2018"
 [dependencies]
 diesel = { version = "1.4.3", features = ["postgres", "r2d2"] }
 dotenv = "0.15.0"
-juniper = "0.14.2"
-juniper_hyper = "0.5.2"
-hyper  = "0.13.1"
-pretty_env_logger = "0.2"
+# juniper = "0.14.2"
+# juniper_hyper = "0.5.2"
+# hyper  = "0.13.1"
+
+warp = "0.1.19"
+futures = { version = "0.3.1", features = ["compat"] }
+# reqwest = { version = "0.9.19" }
+
+juniper_codegen = { git = "https://github.com/graphql-rust/juniper", branch = "async-await", features = ["async"] }
+juniper = { git = "https://github.com/graphql-rust/juniper", branch = "async-await", features = ["async"] }
+juniper_warp = { git = "https://github.com/graphql-rust/juniper", branch = "async-await", features = ["async"] }
+
+log = "0.4"
+pretty_env_logger = "0.3"
 reqwest = { version = "0.10", features = ["json"] }
-tokio = { version = "0.2", features = ["full"] }
-futures03 = { package = "futures", version = "0.3.1", features = ["compat"] }
-futures = { package = "futures", version = "0.1.29" }
+# tokio = { version = "0.2", features = ["full"] }
+# futures03 = { package = "futures", version = "0.3.1", features = ["compat"] }
+# futures = { package = "futures", version = "0.1.29" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.44"
 url = "2.1.1"

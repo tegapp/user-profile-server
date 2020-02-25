@@ -19,7 +19,7 @@ fn unauthorized() -> FieldError {
 
 pub struct MyNamespace;
 
-#[juniper::object(
+#[graphql_object(
     // Here we specify the context type for the object.
     // We need to do this in every type that
     // needs access to the context.
@@ -52,7 +52,7 @@ impl MyNamespace {
 
 pub struct Query;
 
-#[juniper::object(
+#[graphql_object(
     // Here we specify the context type for the object.
     // We need to do this in every type that
     // needs access to the context.
@@ -67,7 +67,7 @@ impl Query {
         Ok(MyNamespace)
     }
 
-    fn current_user(context: &Context) -> FieldResult<User> {        
+    fn current_user(context: &Context) -> FieldResult<User> {
         use super::schema::users::dsl;
 
         let user_id = context.user_id.ok_or(unauthorized())?;
@@ -88,13 +88,13 @@ impl Query {
 
 pub struct Mutation;
 
-#[juniper::object(
+#[graphql_object(
     Context = Context,
 )]
 impl Mutation {
     fn create_machine(context: &Context, input: CreateMachine) -> FieldResult<Machine> {
         use crate::diesel::RunQueryDsl;
-        
+
         use super::schema::machines::{self, dsl};
         use super::machine::{ NewMachineSQL };
 
@@ -157,3 +157,7 @@ impl Mutation {
 // A root schema consists of a query and a mutation.
 // Request queries can be executed against a RootNode.
 pub type Schema = juniper::RootNode<'static, Query, Mutation>;
+
+pub fn schema() -> Schema {
+    Schema::new(Query, Mutation)
+}

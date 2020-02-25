@@ -11,7 +11,7 @@ pub struct User {
     pub phone_number_verified: bool,
 }
 
-#[juniper::object(
+#[graphql_object(
     description="A user"
 )]
 impl User {

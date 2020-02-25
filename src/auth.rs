@@ -13,8 +13,6 @@
 //     Token,
 // };
 
-use hyper::header::{AUTHORIZATION};
-
 // use alcoholic_jwt::{JWKS, Validation, validate, token_kid, ValidJWT};
 
 // use std::sync::Arc;
@@ -48,7 +46,7 @@ pub async fn validate_auth0_user(
         .map_err(|_| "Invalid Bearer Authentication".to_string())?;
 
     let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, bearer_auth);
+    headers.insert(reqwest::header::AUTHORIZATION, bearer_auth);
 
     let res = reqwest::Client::new()
         .post(&auth0_url)
@@ -72,18 +70,13 @@ pub async fn validate_auth0_user(
 
 pub async fn upsert_user(
     pool: PgPool,
-    req: &hyper::Request<hyper::Body>,
+    authorization_header: Option<String>,
 ) -> Result<User, String> {
-    let auth_header = req.headers().get(AUTHORIZATION);
-
-    let bearer_auth = auth_header
-        .ok_or("Missing Bearer Authentication".to_string())?
-        .to_str()
-        .map_err(|_| "Invalid Bearer Authentication".to_string())?;
-
     // println!("AUTH: {:?}", bearer_auth);
 
-    let auth0_user = validate_auth0_user(bearer_auth).await?;
+    let authorization_header = authorization_header.ok_or("Missing authorization header")?;
+
+    let auth0_user = validate_auth0_user(&authorization_header).await?;
 
     use crate::diesel::RunQueryDsl;
     use super::schema::users;

@@ -10,7 +10,7 @@ pub struct Machine {
     pub slug: String,
 }
 
-#[juniper::object(
+#[graphql_object(
     description="A user's 3D printer or other CNC device"
 )]
 impl Machine {

@@ -2,30 +2,27 @@
 extern crate diesel;
 #[macro_use]
 extern crate juniper;
-extern crate dotenv;
-extern crate reqwest;
-extern crate futures;
-extern crate futures03;
-extern crate serde;
-extern crate serde_json;
-extern crate url;
 
+pub mod schema;
+pub mod user;
+pub mod machine;
+pub mod graphql_schema;
+pub mod context;
+pub mod auth;
 
-// use diesel::prelude::*;
+use futures::future::{FutureExt, TryFutureExt};
+
+use warp::{http::Response, Filter};
+
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ Pool, PooledConnection, ConnectionManager };
 use dotenv::dotenv;
 use std::env;
 use std::sync::Arc;
 
+use context::Context;
 
-pub mod schema;
-pub mod user;
-pub mod machine;
-pub mod hyper_server;
-pub mod graphql_schema;
-pub mod context;
-pub mod auth;
+use auth::{ upsert_user };
 
 pub type PgPool = Arc<Pool<ConnectionManager<PgConnection>>>;
 pub type PgPooledConnection = PooledConnection<ConnectionManager<PgConnection>>;
@@ -44,11 +41,64 @@ pub fn establish_db_connection() -> PgPool {
 
     Arc::new(pool)
 }
+fn main() {
+    dotenv::dotenv().ok();
+    pretty_env_logger::init();
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let connection = establish_db_connection();
-    hyper_server::run(connection).await?;
+    let log = warp::log("warp_server");
 
-    Ok(())
+    let port = env::var("PORT")
+        .expect("$PORT must be set")
+        .parse()
+        .expect("Invalid $PORT");
+
+    let pool = establish_db_connection();
+
+    let homepage = warp::path::end().map(|| {
+        Response::builder()
+            .header("content-type", "text/html")
+            .body(format!(
+                "<html><h1>juniper_warp</h1><div>visit <a href=\"/graphiql\">/graphiql</a></html>"
+            ))
+    });
+
+
+    let state = warp::any()
+        .and(warp::header::optional::<String>("authorization"))
+        .and_then(move |authorization_header: Option<String>| {
+            let pool = Arc::clone(&pool);
+
+            upsert_user(
+                Arc::clone(&pool),
+                authorization_header,
+            )
+                .map(move |result| {
+                    Context {
+                        pool: Arc::clone(&pool),
+                        user_id: result.ok().map(|user| user.id),
+                    }
+                })
+                .unit_error()
+                .map_err(|_| warp::reject::not_found())
+                .boxed()
+                .compat()
+        });
+
+    let graphql_filter = juniper_warp::make_graphql_filter_async(
+        crate::graphql_schema::schema(),
+        state.boxed(),
+    );
+
+    let cors = warp::cors().allow_any_origin();
+
+    warp::serve(
+        warp::get2()
+            .and(warp::path("graphiql"))
+            .and(juniper_warp::graphiql_filter("/graphql"))
+            .or(homepage)
+            .or(warp::path("graphql").and(graphql_filter))
+            .with(log)
+            .with(cors),
+    )
+    .run(([127, 0, 0, 1], port));
 }
