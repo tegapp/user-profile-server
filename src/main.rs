@@ -8,9 +8,7 @@ pub mod user;
 pub mod machine;
 pub mod graphql_schema;
 pub mod context;
-pub mod auth;
-
-use futures::future::{FutureExt, TryFutureExt};
+// pub mod auth;
 
 use warp::{http::Response, Filter};
 
@@ -22,67 +20,12 @@ use std::sync::Arc;
 
 use context::Context;
 
-use auth::{ upsert_user };
+// use auth::{ upsert_user };
 
+error_chain::error_chain! {}
 
-error_chain::error_chain! {
-    // // The type defined for this error. These are the conventional
-    // // and recommended names, but they can be arbitrarily chosen.
-    // //
-    // // It is also possible to leave this section out entirely, or
-    // // leave it empty, and these names will be used automatically.
-    // types {
-    //     Error, ErrorKind, ResultExt, Result;
-    // }
-
-    // // Without the `Result` wrapper:
-    // //
-    // // types {
-    // //     Error, ErrorKind, ResultExt;
-    // // }
-
-    // // Automatic conversions between this error chain and other
-    // // error chains. In this case, it will e.g. generate an
-    // // `ErrorKind` variant called `Another` which in turn contains
-    // // the `other_error::ErrorKind`, with conversions from
-    // // `other_error::Error`.
-    // //
-    // // Optionally, some attributes can be added to a variant.
-    // //
-    // // This section can be empty.
-    // links {
-    //     Another(other_error::Error, other_error::ErrorKind) #[cfg(unix)];
-    // }
-
-    // // Automatic conversions between this error chain and other
-    // // error types not defined by the `error_chain!`. These will be
-    // // wrapped in a new error with, in the first case, the
-    // // `ErrorKind::Fmt` variant. The description and cause will
-    // // forward to the description and cause of the original error.
-    // //
-    // // Optionally, some attributes can be added to a variant.
-    // //
-    // // This section can be empty.
-    // foreign_links {
-    //     Fmt(::std::fmt::Error);
-    //     Io(::std::io::Error) #[cfg(unix)];
-    // }
-
-    // // Define additional `ErrorKind` variants.  Define custom responses with the
-    // // `description` and `display` calls.
-    // errors {
-    //     InvalidToolchainName(t: String) {
-    //         description("invalid toolchain name")
-    //         display("invalid toolchain name: '{}'", t)
-    //     }
-
-    //     // You can also add commas after description/display.
-    //     // This may work better with some editor auto-indentation modes:
-    //     UnknownToolchainVersion(v: String) {
-    //         description("unknown toolchain version"), // note the ,
-    //         display("unknown toolchain version: '{}'", v), // trailing comma is allowed
-    //     }
-    // }
+pub fn unauthorized() -> Error {
+    "Unauthorized Access".into()
 }
 
 pub type PgPool = Arc<Pool<ConnectionManager<PgConnection>>>;
@@ -125,17 +68,6 @@ fn main() {
             .expect("Could not connect to Postgres")
     });
 
-    futures::executor::block_on(async {
-        let users = sqlx::query_as!(
-            user::User,
-            "SELECT * FROM users ORDER BY id",
-        )
-            .fetch_all(&mut sqlx_pool.acquire().await.unwrap())
-            .await.unwrap();
-
-        println!("!!!!IT WORKED!!!!! {:?}", users);
-    });
-
     let homepage = warp::path::end().map(|| {
         Response::builder()
             .header("content-type", "text/html")
@@ -147,23 +79,31 @@ fn main() {
 
     let state = warp::any()
         .and(warp::header::optional::<String>("authorization"))
-        .and_then(move |authorization_header: Option<String>| {
+        // .and_then(move |authorization_header: Option<String>| {
+        .map(move |authorization_header: Option<String>| {
             let pool = Arc::clone(&pool);
+            let sqlx_pool = Arc::clone(&sqlx_pool);
 
-            upsert_user(
-                Arc::clone(&pool),
-                authorization_header,
-            )
-                .map(move |result| {
-                    Context {
-                        pool: Arc::clone(&pool),
-                        user_id: result.ok().map(|user| user.id),
-                    }
-                })
-                .unit_error()
-                .map_err(|_| warp::reject::not_found())
-                .boxed()
-                .compat()
+            // upsert_user(
+            //     Arc::clone(&pool),
+            //     authorization_header,
+            // )
+            //     .map(move |result| {
+            //         Context {
+            //             pool: Arc::clone(&pool),
+            //             sqlx_pool: Arc::clone(&sqlx_pool),
+            //             user_id: result.ok().map(|user| user.id),
+            //         }
+            //     })
+            //     .unit_error()
+            //     .map_err(|_| warp::reject::not_found())
+            //     .boxed()
+            //     .compat()
+            Context {
+                pool: Arc::clone(&pool),
+                sqlx_pool: Arc::clone(&sqlx_pool),
+                user_id: None,
+            }
         });
 
     let graphql_filter = juniper_warp::make_graphql_filter_async(

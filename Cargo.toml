@@ -15,6 +15,7 @@ dotenv = "0.15.0"
 
 warp = "0.1.19"
 futures = { version = "0.3.1", features = ["compat"] }
+futures-util = "0.3.4"
 # reqwest = { version = "0.9.19" }
 
 juniper_codegen = { git = "https://github.com/graphql-rust/juniper", branch = "async-await", features = ["async"] }

@@ -1,6 +1,13 @@
 use super::schema::{users};
-use juniper::{FieldResult};
-use crate::context::Context;
+
+mod login_with_password;
+pub use login_with_password::*;
+
+mod signup;
+pub use signup::*;
+
+mod current_user;
+pub use current_user::*;
 
 #[derive(Identifiable, Queryable, Debug)]
 pub struct User {
@@ -29,35 +36,6 @@ impl User {
     fn email_verified(&self) -> bool {
         self.email_verified
     }
-}
-
-impl User {
-    fn signup(
-        context: &Context,
-        input: SignupInput,
-    ) -> FieldResult<Option<User>> {
-
-        let SignupInput {
-            username,
-            password,
-            email
-        } = input;
-
-        let hashed_password = {
-            use bcrypt::{DEFAULT_COST, hash};
-
-            hash(password, DEFAULT_COST)?
-        };
-
-
-    }
-}
-
-#[derive(juniper::GraphQLInputObject)]
-pub struct SignupInput<'a> {
-    pub username: &'a str,
-    pub password: &'a str,
-    pub email: &'a str,
 }
 
 #[derive(Insertable, AsChangeset)]
