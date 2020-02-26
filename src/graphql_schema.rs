@@ -6,7 +6,7 @@ use diesel::{
     ExpressionMethods,
 };
 
-use super::user::{ User };
+use super::user::{ User, SignupInput };
 use super::machine::{ Machine, CreateMachine, SetMachineName };
 use super::context::Context;
 
@@ -92,6 +92,13 @@ pub struct Mutation;
     Context = Context,
 )]
 impl Mutation {
+    fn signup(
+        context: &Context,
+        input: SignupInput,
+    ) -> FieldResult<Option<User>> {
+        User::signup(context, input)
+    }
+
     fn create_machine(context: &Context, input: CreateMachine) -> FieldResult<Machine> {
         use crate::diesel::RunQueryDsl;
 

@@ -34,3 +34,4 @@ sqlx = { git = "https://github.com/launchbadge/sqlx.git", branch = "ab/null-para
 sqlx-core = { git = "https://github.com/launchbadge/sqlx.git", branch = "ab/null-param-fix" }
 rand = "0.7.3"
 error-chain = "0.12.2"
+bcrypt = "0.6"
