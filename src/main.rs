@@ -182,5 +182,5 @@ fn main() {
             .with(log)
             .with(cors),
     )
-    .run(([127, 0, 0, 1], port));
+    .run(([0, 0, 0, 0], port));
 }
