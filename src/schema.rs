@@ -9,6 +9,14 @@ table! {
 }
 
 table! {
+    sessions (sid) {
+        sid -> Text,
+        sess -> Text,
+        expire -> Timestamptz,
+    }
+}
+
+table! {
     users (id) {
         id -> Int4,
         email -> Nullable<Text>,
@@ -24,5 +32,6 @@ joinable!(machines -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
     machines,
+    sessions,
     users,
 );

@@ -12,7 +12,6 @@ pub use remove_machine::*;
 mod my_machines;
 pub use my_machines::*;
 
-#[derive(Identifiable, Queryable)]
 // #[belongs_to(User)]
 pub struct Machine {
     pub id: i32,

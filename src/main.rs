@@ -9,6 +9,7 @@ pub mod machine;
 pub mod graphql_schema;
 pub mod context;
 // pub mod auth;
+pub mod warp_sessions;
 
 use warp::{http::Response, Filter};
 
@@ -19,6 +20,8 @@ use std::env;
 use std::sync::Arc;
 
 use context::Context;
+
+use juniper::http::{GraphQLRequest}
 
 // use auth::{ upsert_user };
 
@@ -45,6 +48,7 @@ pub fn establish_db_connection() -> PgPool {
 
     Arc::new(pool)
 }
+
 fn main() {
     dotenv::dotenv().ok();
     pretty_env_logger::init();
@@ -76,11 +80,26 @@ fn main() {
             ))
     });
 
+    use crate::warp_sessions::{ Session, SQLXStore };
+
+    let store = SQLXStore {
+        secret: "TODO: SESSION SECRET".to_string(),
+        pool: Arc::clone(&sqlx_pool),
+    };
 
     let state = warp::any()
-        .and(warp::header::optional::<String>("authorization"))
-        // .and_then(move |authorization_header: Option<String>| {
-        .map(move |authorization_header: Option<String>| {
+        // .or(
+        //     warp::header::<String>("authorization")
+        //         .map(move |authorization_header| {
+        //             // Bearer Auth
+        //             None
+        //         })
+        // )
+        // .unify()
+        .and(
+            warp_sessions::optional_csrf_session(store)
+        )
+        .map(move |session: Session, csrf_token: Option<String>| -> Context {
             let pool = Arc::clone(&pool);
             let sqlx_pool = Arc::clone(&sqlx_pool);
 
@@ -103,13 +122,57 @@ fn main() {
                 pool: Arc::clone(&pool),
                 sqlx_pool: Arc::clone(&sqlx_pool),
                 user_id: None,
+                session,
+                csrf_token,
             }
         });
 
-    let graphql_filter = juniper_warp::make_graphql_filter_async(
-        crate::graphql_schema::schema(),
-        state.boxed(),
-    );
+    // let graphql_filter = juniper_warp::make_graphql_filter_async(
+    //     crate::graphql_schema::schema(),
+    //     state.boxed(),
+    // );
+
+    async fn handle_graphql(
+        req: GraphQLRequest,
+        context: Context
+    ) -> crate::Result<Response<Vec<u8>>> {
+        use crate::graphql_schema::schema;
+        use warp::http::{ self, StatusCode };
+
+        let graphql_res = req.execute_async(&schema(), &context).await;
+
+        let status_code = if graphql_res.is_ok() {
+            StatusCode::OK
+        } else {
+            StatusCode::INTERNAL_SERVER_ERROR
+        };
+
+        let session_cookie = context.session.cookie_builder()
+            // TODO: production domain/secure toggles
+            .domain("localhost")
+            .secure(false)
+            .finish()
+            .to_string();
+
+        let body = serde_json::to_vec(&graphql_res)
+            .chain_err(|| "Unable to serialize graphql response")?;
+
+        let res = Response::builder()
+            .status(status_code)
+            .header(
+                http::header::SET_COOKIE,
+                session_cookie,
+            )
+            .body(body)
+            .chain_err(|| "Unable to build graphql response")?;
+
+        Ok(res)
+    }
+
+    let graphql_filter = warp::any()
+        .and(warp::body::json())
+        .and(state)
+        .and_then(handle_graphql);
 
     let cors = warp::cors().allow_any_origin();
 

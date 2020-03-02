@@ -8,6 +8,8 @@ pub struct Context {
     pub pool: PgPool,
     pub sqlx_pool: Arc<sqlx::PgPool>,
     pub user_id: Option<i32>,
+    pub session: crate::warp_sessions::Session,
+    pub csrf_token: Option<String>,
 }
 
 // To make our context usable by Juniper, we have to implement a marker trait.
