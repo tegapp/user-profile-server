@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use context::Context;
 
-use juniper::http::{GraphQLRequest}
+use juniper::http::{ GraphQLRequest };
 
 // use auth::{ upsert_user };
 
@@ -132,6 +132,8 @@ fn main() {
     //     state.boxed(),
     // );
 
+    use futures::prelude;
+
     async fn handle_graphql(
         req: GraphQLRequest,
         context: Context
@@ -169,19 +171,35 @@ fn main() {
         Ok(res)
     }
 
-    let graphql_filter = warp::any()
+
+    #[derive(Debug)]
+    struct InternalServerError;
+
+    impl warp::reject::Reject for InternalServerError {}
+
+    let graphql_filter = warp::post()
+        .and(warp::path("graphql"))
         .and(warp::body::json())
         .and(state)
-        .and_then(handle_graphql);
+        .and_then(|req, context| async move {
+            handle_graphql(req, context)
+                .await
+                .map_err(|err| {
+                    log::error!("GraphQL Error: {:?}", err);
+
+                    warp::reject::custom(InternalServerError)
+                })
+        });
 
     let cors = warp::cors().allow_any_origin();
 
     warp::serve(
-        warp::get2()
-            .and(warp::path("graphiql"))
-            .and(juniper_warp::graphiql_filter("/graphql"))
-            .or(homepage)
-            .or(warp::path("graphql").and(graphql_filter))
+        warp::get()
+            // .and(warp::path("graphiql"))
+            // .and(juniper_warp::graphiql_filter("/graphql"))
+            // .or(homepage)
+            .and(homepage)
+            .or(graphql_filter)
             .with(log)
             .with(cors),
     )

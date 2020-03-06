@@ -13,7 +13,7 @@ dotenv = "0.15.0"
 # juniper_hyper = "0.5.2"
 # hyper  = "0.13.1"
 
-warp = "0.1.19"
+warp = "0.2.1"
 futures = { version = "0.3.1", features = ["compat"] }
 futures-util = "0.3.4"
 # reqwest = { version = "0.9.19" }
@@ -41,4 +41,4 @@ consistenttime = "0.2.0"
 base64 ="0.11.0"
 async-trait = "0.1.24"
 ring = "0.16.11"
-chrono = "0.4.10"
+chrono = { version = "0.4.10", features = ["serde"] }

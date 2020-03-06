@@ -1,5 +1,6 @@
 use warp::{ Filter, filters::BoxedFilter };
 use chrono::prelude::*;
+use std::sync::Arc;
 
 use super::{
     Session,
@@ -9,9 +10,9 @@ use super::{
 };
 
 async fn session_filter<S: SessionStore>(
-    store: S,
+    store: &S,
     session_cookie: Option<String>,
-) -> crate::Result<Option<Session>> {
+) -> crate::Result<Session> {
     let secret = store.secret().to_string();
 
     let session = if let Some(session_cookie) = session_cookie {
@@ -56,20 +57,28 @@ async fn session_filter<S: SessionStore>(
 
             store.create(&session).await?;
 
-            Ok(Some(session))
+            Ok(session)
         }
     }
 }
 
-pub fn session<S, F>(
-    store: S,
+pub fn session<S: SessionStore, F>(
+    store: Arc<S>,
 ) -> BoxedFilter<(Session,)>
 where
     S: SessionStore,
 {
+    let store = Arc::clone(&store);
+
     warp::filters::cookie::optional("session")
         .and_then(move |session_cookie| {
-            session_filter(store, session_cookie)
+            let store = Arc::clone(&store);
+            async move {
+                let store = Arc::clone(&store);
+
+                session_filter(&*store, session_cookie).await
+                    .map_err(|_| warp::reject::not_found())
+            }
         })
         .boxed()
 }

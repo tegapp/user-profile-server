@@ -59,7 +59,7 @@ impl Session {
 }
 
 #[async_trait]
-pub trait SessionStore: Sized {
+pub trait SessionStore: Sized + Send + Sync {
     fn secret(&self) -> &str;
 
     async fn get<'a>(&self, session_id: String) -> crate::Result<Option<Session>>;
