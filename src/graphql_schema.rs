@@ -30,7 +30,7 @@ impl Query {
     }
 
     async fn current_user(context: &Context) -> FieldResult<User> {
-        Ok(user::current_user(context).await?)
+        Ok(context.user)
     }
 
     fn is_authenticated_for(context: &Context, machine_id: String) -> bool {

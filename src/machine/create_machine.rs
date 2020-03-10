@@ -10,7 +10,7 @@ pub struct CreateMachineInput {
 }
 
 pub async fn create_machine(context: &Context, input: CreateMachineInput) -> crate::Result<Machine> {
-    let user_id = context.user_id.ok_or(unauthorized())?;
+    let user_id = context.user.ok_or(unauthorized())?.id;
 
     let machine = sqlx::query_as!(
         Machine,

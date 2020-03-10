@@ -13,7 +13,7 @@ pub struct SetMachineName {
 }
 
 pub async fn set_machine_name(context: &Context, input: SetMachineName) -> crate::Result<Machine> {
-    let user_id = context.user_id.ok_or(unauthorized())?;
+    let user_id = context.user.ok_or(unauthorized())?.id;
 
     let machine = sqlx::query_as!(
         Machine,

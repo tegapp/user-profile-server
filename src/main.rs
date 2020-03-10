@@ -8,8 +8,6 @@ pub mod user;
 pub mod machine;
 pub mod graphql_schema;
 pub mod context;
-// pub mod auth;
-pub mod warp_sessions;
 
 use warp::{http::Response, Filter};
 
@@ -60,6 +58,8 @@ fn main() {
         .parse()
         .expect("Invalid $PORT");
 
+    let surf_client = surf::Client::new();
+
     let pool = establish_db_connection();
 
     let database_url = env::var("POSTGRESQL_ADDON_URI")
@@ -80,13 +80,6 @@ fn main() {
             ))
     });
 
-    use crate::warp_sessions::{ Session, SQLXStore };
-
-    let store = SQLXStore {
-        secret: "TODO: SESSION SECRET".to_string(),
-        pool: Arc::clone(&sqlx_pool),
-    };
-
     let state = warp::any()
         // .or(
         //     warp::header::<String>("authorization")
@@ -96,35 +89,17 @@ fn main() {
         //         })
         // )
         // .unify()
-        .and(
-            warp_sessions::optional_csrf_session(store)
-        )
-        .map(move |session: Session, csrf_token: Option<String>| -> Context {
+        .and(warp::header::optional::<String>("authorization"))
+        .and_then(move |authorization_header: String| async {
             let pool = Arc::clone(&pool);
             let sqlx_pool = Arc::clone(&sqlx_pool);
 
-            // upsert_user(
-            //     Arc::clone(&pool),
-            //     authorization_header,
-            // )
-            //     .map(move |result| {
-            //         Context {
-            //             pool: Arc::clone(&pool),
-            //             sqlx_pool: Arc::clone(&sqlx_pool),
-            //             user_id: result.ok().map(|user| user.id),
-            //         }
-            //     })
-            //     .unit_error()
-            //     .map_err(|_| warp::reject::not_found())
-            //     .boxed()
-            //     .compat()
-            Context {
-                pool: Arc::clone(&pool),
-                sqlx_pool: Arc::clone(&sqlx_pool),
-                user_id: None,
-                session,
-                csrf_token,
-            }
+            Context::new(
+                authorization_header,
+                pool,
+                sqlx_pool,
+                surf_client,
+            ).await
         });
 
     // let graphql_filter = juniper_warp::make_graphql_filter_async(

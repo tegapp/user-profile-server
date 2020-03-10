@@ -6,8 +6,8 @@ pub use login_with_password::*;
 mod signup;
 pub use signup::*;
 
-mod current_user;
-pub use current_user::*;
+mod authorize_user;
+pub use authorize_user::*;
 
 #[derive(Identifiable, Queryable, Debug)]
 pub struct User {

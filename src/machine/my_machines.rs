@@ -4,7 +4,7 @@ use crate::{ Context, ResultExt, unauthorized };
 use super::Machine;
 
 pub async fn my_machines(context: &Context, slug: Option<String>) -> crate::Result<Vec<Machine>> {
-    let user_id = context.user_id.ok_or(unauthorized())?;
+    let user_id = context.user.ok_or(unauthorized())?.id;
 
     let query = if let Some(slug) = slug {
         sqlx::query_as!(

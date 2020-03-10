@@ -13,9 +13,6 @@ DROP COLUMN name;
 -- DROP COLUMN phone_number_verified;
 
 ALTER TABLE users
-ADD COLUMN username TEXT NOT NULL;
+ADD COLUMN firebase_uid TEXT NOT NULL;
 
-ALTER TABLE users
-ADD COLUMN hashed_password TEXT;
-
-CREATE UNIQUE INDEX uniq_username ON users (username);
+CREATE UNIQUE INDEX firebase_uid ON users (firebase_uid);
