@@ -1,5 +1,3 @@
-use super::schema::{machines};
-
 mod create_machine;
 pub use create_machine::*;
 
@@ -12,7 +10,6 @@ pub use remove_machine::*;
 mod my_machines;
 pub use my_machines::*;
 
-// #[belongs_to(User)]
 pub struct Machine {
     pub id: i32,
     pub user_id: i32,

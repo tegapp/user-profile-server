@@ -1,7 +1,7 @@
 use crate::{ Context, ResultExt, unauthorized };
 
 pub async fn remove_machine(context: &Context, machine_id: String) -> crate::Result<Option<bool>> {
-    let user_id = context.user.ok_or(unauthorized())?.id;
+    let user_id = context.user_id().ok_or(unauthorized())?;
 
     sqlx::query!(
         "

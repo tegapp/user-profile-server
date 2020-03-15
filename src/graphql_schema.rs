@@ -1,6 +1,6 @@
 use juniper::FieldResult;
 
-use super::user::{ self, User };
+use super::user::{ User };
 use super::machine::{ self, Machine };
 use crate::Context;
 
@@ -29,13 +29,13 @@ impl Query {
         Ok(MyNamespace)
     }
 
-    async fn current_user(context: &Context) -> FieldResult<User> {
-        Ok(context.user)
+    async fn current_user(context: &Context) -> FieldResult<Option<User>> {
+        Ok(context.user.clone())
     }
 
-    fn is_authenticated_for(context: &Context, machine_id: String) -> bool {
-        context.user_id.is_some()
-    }
+    // fn is_authenticated_for(context: &Context, machine_id: String) -> FieldResult<bool> {
+    //     Ok(context.user.is_some())
+    // }
 }
 
 pub struct Mutation;
@@ -44,20 +44,6 @@ pub struct Mutation;
     Context = Context,
 )]
 impl Mutation {
-    async fn login_with_password(
-        context: &Context,
-        input: user::LoginWithPasswordInput,
-    ) -> FieldResult<User> {
-        Ok(user::login_with_password(context, input).await?)
-    }
-
-    async fn signup(
-        context: &Context,
-        input: user::SignupInput,
-    ) -> FieldResult<User> {
-        Ok(user::signup(context, input).await?)
-    }
-
     async fn create_machine(
         context: &Context,
         input: machine::CreateMachineInput

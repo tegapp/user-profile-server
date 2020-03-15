@@ -11,11 +11,10 @@ pub mod context;
 
 use warp::{http::Response, Filter};
 
-use diesel::pg::PgConnection;
-use diesel::r2d2::{ Pool, PooledConnection, ConnectionManager };
-use dotenv::dotenv;
 use std::env;
 use std::sync::Arc;
+
+use futures::prelude::*;
 
 use context::Context;
 
@@ -29,27 +28,15 @@ pub fn unauthorized() -> Error {
     "Unauthorized Access".into()
 }
 
-pub type PgPool = Arc<Pool<ConnectionManager<PgConnection>>>;
-pub type PgPooledConnection = PooledConnection<ConnectionManager<PgConnection>>;
+#[derive(Debug)]
+pub struct InternalServerError;
 
-pub fn establish_db_connection() -> PgPool {
-    dotenv().ok();
+impl warp::reject::Reject for InternalServerError {}
 
-    let database_url = env::var("POSTGRESQL_ADDON_URI")
-        .expect("$POSTGRESQL_ADDON_URI must be set");
-    let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
-
-    let pool = Pool::builder()
-        .max_size(2)
-        .build(manager)
-        .expect(&format!("Error connecting to {}", database_url));
-
-    Arc::new(pool)
-}
-
-fn main() {
+#[tokio::main]
+async fn main() {
     dotenv::dotenv().ok();
-    pretty_env_logger::init();
+    pretty_env_logger::init_timed();
 
     let log = warp::log("warp_server");
 
@@ -58,9 +45,7 @@ fn main() {
         .parse()
         .expect("Invalid $PORT");
 
-    let surf_client = surf::Client::new();
-
-    let pool = establish_db_connection();
+    let surf_client = Arc::new(surf::Client::new());
 
     let database_url = env::var("POSTGRESQL_ADDON_URI")
         .expect("$POSTGRESQL_ADDON_URI must be set");
@@ -81,42 +66,29 @@ fn main() {
     });
 
     let state = warp::any()
-        // .or(
-        //     warp::header::<String>("authorization")
-        //         .map(move |authorization_header| {
-        //             // Bearer Auth
-        //             None
-        //         })
-        // )
-        // .unify()
         .and(warp::header::optional::<String>("authorization"))
-        .and_then(move |authorization_header: String| async {
-            let pool = Arc::clone(&pool);
-            let sqlx_pool = Arc::clone(&sqlx_pool);
-
+        .and_then(move |authorization_header: Option<String>| {
             Context::new(
-                authorization_header,
-                pool,
-                sqlx_pool,
-                surf_client,
-            ).await
+                authorization_header.clone(),
+                Arc::clone(&sqlx_pool),
+                Arc::clone(&surf_client),
+            )
+                .map_err(|err| {
+                    log::error!("Context Error: {:?}", err);
+
+                    warp::reject::custom(crate::InternalServerError)
+                })
         });
-
-    // let graphql_filter = juniper_warp::make_graphql_filter_async(
-    //     crate::graphql_schema::schema(),
-    //     state.boxed(),
-    // );
-
-    use futures::prelude;
 
     async fn handle_graphql(
         req: GraphQLRequest,
         context: Context
     ) -> crate::Result<Response<Vec<u8>>> {
-        use crate::graphql_schema::schema;
-        use warp::http::{ self, StatusCode };
+        use warp::http::{ StatusCode };
 
-        let graphql_res = req.execute_async(&schema(), &context).await;
+        let schema = crate::graphql_schema::schema();
+
+        let graphql_res = req.execute_async(&schema, &context).await;
 
         let status_code = if graphql_res.is_ok() {
             StatusCode::OK
@@ -124,36 +96,29 @@ fn main() {
             StatusCode::INTERNAL_SERVER_ERROR
         };
 
-        let session_cookie = context.session.cookie_builder()
-            // TODO: production domain/secure toggles
-            .domain("localhost")
-            .secure(false)
-            .finish()
-            .to_string();
-
         let body = serde_json::to_vec(&graphql_res)
             .chain_err(|| "Unable to serialize graphql response")?;
 
         let res = Response::builder()
             .status(status_code)
-            .header(
-                http::header::SET_COOKIE,
-                session_cookie,
-            )
+            .header("Content-Type", "application/json")
             .body(body)
             .chain_err(|| "Unable to build graphql response")?;
 
         Ok(res)
     }
 
+    use warp::{http::Method};
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(&[Method::GET, Method::POST, Method::DELETE])
+        .allow_headers(vec!["authorization", "content-type"]);
 
-    #[derive(Debug)]
-    struct InternalServerError;
-
-    impl warp::reject::Reject for InternalServerError {}
+    let cors_route = warp::options().map(warp::reply);
 
     let graphql_filter = warp::post()
         .and(warp::path("graphql"))
+        .and(warp::body::content_length_limit(1024 * 1024))
         .and(warp::body::json())
         .and(state)
         .and_then(|req, context| async move {
@@ -166,17 +131,19 @@ fn main() {
                 })
         });
 
-    let cors = warp::cors().allow_any_origin();
-
     warp::serve(
-        warp::get()
-            // .and(warp::path("graphiql"))
-            // .and(juniper_warp::graphiql_filter("/graphql"))
-            // .or(homepage)
-            .and(homepage)
+        warp::any()
+        //     // .and(warp::path("graphiql"))
+        //     // .and(juniper_warp::graphiql_filter("/graphql"))
+        //     // .or(homepage)
+        //     // .and(homepage)
+            .and(cors_route)
+        //     // cors_route
             .or(graphql_filter)
-            .with(log)
-            .with(cors),
+            .or(homepage)
+            .with(cors)
+            .with(log),
     )
-    .run(([0, 0, 0, 0], port));
+    .run(([0, 0, 0, 0], port))
+    .await;
 }

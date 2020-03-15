@@ -11,10 +11,9 @@ table! {
 table! {
     users (id) {
         id -> Int4,
+        name -> Nullable<Text>,
         email -> Nullable<Text>,
         email_verified -> Bool,
-        phone_number -> Nullable<Text>,
-        phone_number_verified -> Bool,
         firebase_uid -> Text,
     }
 }

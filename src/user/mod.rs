@@ -1,23 +1,13 @@
-use super::schema::{users};
-
-mod login_with_password;
-pub use login_with_password::*;
-
-mod signup;
-pub use signup::*;
-
 mod authorize_user;
 pub use authorize_user::*;
 
-#[derive(Identifiable, Queryable, Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     pub id: i32,
-    pub username: String,
-    pub hashed_password: Option<String>,
+    pub firebase_uid: String,
+    pub name: String,
     pub email: Option<String>,
     pub email_verified: bool,
-    pub phone_number: Option<String>,
-    pub phone_number_verified: bool,
 }
 
 #[graphql_object(
@@ -27,8 +17,8 @@ impl User {
     fn id(&self) -> String {
         self.id.to_string()
     }
-    fn username(&self) -> String {
-        self.username.to_string()
+    fn name(&self) -> String {
+        self.name.to_string()
     }
     fn email(&self) -> &Option<String> {
         &self.email
@@ -38,11 +28,8 @@ impl User {
     }
 }
 
-#[derive(Insertable, AsChangeset)]
-#[table_name="users"]
-pub struct NewUser<'a> {
-    pub username: &'a str,
-    pub hashed_password: Option<String>,
+#[derive(Debug)]
+pub struct NewUser {
     pub email: Option<String>,
     pub email_verified: bool,
     pub phone_number: Option<String>,

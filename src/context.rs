@@ -1,14 +1,12 @@
-use super::PgPool;
-use juniper::{FieldResult, FieldError};
-use super::PgPooledConnection;
 use std::sync::Arc;
 use crate::ResultExt;
+// use futures::prelude::*;
 
 pub struct Context {
-    pub pool: PgPool,
     pub sqlx_pool: Arc<sqlx::PgPool>,
     pub user: Option<crate::user::User>,
-    pub surf: surf::Client,
+    // pub surf: surf::Client<http_client::native::NativeClient>,
+    pub surf: Arc<surf::Client<http_client::native::NativeClient>>,
 }
 
 // To make our context usable by Juniper, we have to implement a marker trait.
@@ -16,35 +14,24 @@ impl juniper::Context for Context {}
 
 impl Context {
     pub async fn new(
-        authorization_header: String,
-        pool: PgPool,
+        authorization_header: Option<String>,
         sqlx_pool: Arc<sqlx::PgPool>,
-        surf_client: Arc<surf::Client>,
-    ) -> Result<User, Box<dyn Error>> {
+        surf_client: Arc<surf::Client<http_client::native::NativeClient>>,
+    ) -> Result<Self, crate::Error> {
         let mut context = Context {
-            pool: Arc::clone(&pool),
-            sqlx_pool: Arc::clone(&sqlx_pool),
+            sqlx_pool,
             user: None,
-            surf: Arc::clone(&surf_client),
+            surf: surf_client,
         };
 
-        context.user = crate::user::authorize_user(
-            &context,
-            authorization_header,
-        ).await?;
+        if let Some(authorization_header) = authorization_header {
+            context.user = Some(crate::user::authorize_user(
+                &context,
+                authorization_header,
+            ).await?);
+        }
 
-        context
-    }
-
-    pub fn db(&self) -> FieldResult<PgPooledConnection> {
-        self.pool
-            .get()
-            .map_err(|e| {
-                FieldError::new(
-                    format!("Could not open connection to the database {}", e.to_string()),
-                    graphql_value!({ "internal_error": "Connection refused" })
-                )
-            })
+        Ok(context)
     }
 
     pub async fn sqlx_db(
@@ -54,5 +41,9 @@ impl Context {
             .acquire()
             .await
             .chain_err(|| "Unable to acquire connection from sqlx pool")
+    }
+
+    pub fn user_id(&self) -> Option<i32> {
+        self.user.as_ref().map(|user| user.id)
     }
 }
