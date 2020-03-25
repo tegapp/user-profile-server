@@ -88,7 +88,7 @@ async fn main() {
 
         let schema = crate::graphql_schema::schema();
 
-        let graphql_res = req.execute_async(&schema, &context).await;
+        let graphql_res = req.execute(&schema, &context).await;
 
         let status_code = if graphql_res.is_ok() {
             StatusCode::OK
