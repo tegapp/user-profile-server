@@ -1,9 +1,6 @@
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate juniper;
+#[macro_use] extern crate juniper;
+#[macro_use] extern crate log;
 
-pub mod schema;
 pub mod user;
 pub mod machine;
 pub mod graphql_schema;
@@ -34,7 +31,7 @@ pub struct InternalServerError;
 impl warp::reject::Reject for InternalServerError {}
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenv::dotenv().ok();
     pretty_env_logger::init_timed();
 
@@ -57,6 +54,15 @@ async fn main() {
             .expect("Could not connect to Postgres")
     });
 
+    let pem_keys = Arc::new(user::jwt::get_pem_keys().await?);
+    tokio::spawn(async {
+        info!("Firebase certs will refresh in an hour");
+        tokio::time::delay_for(std::time::Duration::from_secs(60 * 60)).await;
+
+        info!("Restarting server to refresh Firebase certs");
+        std::process::exit(0);
+    });
+
     let homepage = warp::path::end().map(|| {
         Response::builder()
             .header("content-type", "text/html")
@@ -72,6 +78,7 @@ async fn main() {
                 authorization_header.clone(),
                 Arc::clone(&sqlx_pool),
                 Arc::clone(&surf_client),
+                Arc::clone(&pem_keys),
             )
                 .map_err(|err| {
                     log::error!("Context Error: {:?}", err);
@@ -146,4 +153,6 @@ async fn main() {
     )
     .run(([0, 0, 0, 0], port))
     .await;
+
+    Ok(())
 }

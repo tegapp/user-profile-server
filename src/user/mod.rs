@@ -1,6 +1,8 @@
 mod authorize_user;
 pub use authorize_user::*;
 
+pub mod jwt;
+
 #[derive(Debug, Clone)]
 pub struct User {
     pub id: i32,
