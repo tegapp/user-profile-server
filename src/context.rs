@@ -8,6 +8,7 @@ pub struct Context {
     // pub surf: surf::Client<http_client::native::NativeClient>,
     pub surf: Arc<surf::Client<http_client::native::NativeClient>>,
     pub auth_pem_keys: Arc<Vec<Vec<u8>>>,
+    pub ice_servers: Arc<Vec<crate::ice_server::IceServer>>,
 }
 
 // To make our context usable by Juniper, we have to implement a marker trait.
@@ -19,12 +20,14 @@ impl Context {
         sqlx_pool: Arc<sqlx::PgPool>,
         surf_client: Arc<surf::Client<http_client::native::NativeClient>>,
         auth_pem_keys: Arc<Vec<Vec<u8>>>,
+        ice_servers: Arc<Vec<crate::ice_server::IceServer>>,
     ) -> Result<Self, crate::Error> {
         let mut context = Context {
             sqlx_pool,
             user: None,
             surf: surf_client,
             auth_pem_keys,
+            ice_servers,
         };
 
         if let Some(authorization_header) = authorization_header {

@@ -41,7 +41,7 @@ pub async fn get_pem_keys() -> crate::Result<Vec<Vec<u8>>> {
         .map(|result| result.expect("Unable to parse one of google's PEM keys"))
         .collect();
 
-    info!("Firebase Certs Updated");
+    info!("Downloading Firebase Certs  [DONE]");
 
     Ok(pem_keys)
 }

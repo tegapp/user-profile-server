@@ -55,12 +55,15 @@ async fn main() -> Result<()> {
             .expect("Could not connect to Postgres")
     });
 
+    // Pre-caching ice servers and pem keys
+    let ice_servers = Arc::new(ice_server::get_ice_servers().await?);
     let pem_keys = Arc::new(user::jwt::get_pem_keys().await?);
+
     tokio::spawn(async {
-        info!("Firebase certs will refresh in an hour");
+        info!("Firebase Certs and WebRTC ICE servers will refresh in an hour");
         tokio::time::delay_for(std::time::Duration::from_secs(60 * 60)).await;
 
-        info!("Restarting server to refresh Firebase certs");
+        info!("Restarting server to refresh Firebase certs and WebRTC ICE servers");
         std::process::exit(0);
     });
 
@@ -80,6 +83,7 @@ async fn main() -> Result<()> {
                 Arc::clone(&sqlx_pool),
                 Arc::clone(&surf_client),
                 Arc::clone(&pem_keys),
+                Arc::clone(&ice_servers),
             )
                 .map_err(|err| {
                     log::error!("Context Error: {:?}", err);
