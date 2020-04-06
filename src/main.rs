@@ -3,6 +3,7 @@
 
 pub mod user;
 pub mod machine;
+pub mod ice_server;
 pub mod graphql_schema;
 pub mod context;
 

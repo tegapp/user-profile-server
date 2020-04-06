@@ -33,6 +33,10 @@ impl Query {
         Ok(context.user.clone())
     }
 
+    async fn ice_servers(context: &Context) -> FieldResult<Vec<crate::ice_server::IceServer>> {
+        Ok(crate::ice_server::get_ice_servers(context).await?)
+    }
+
     // fn is_authenticated_for(context: &Context, machine_id: String) -> FieldResult<bool> {
     //     Ok(context.user.is_some())
     // }
