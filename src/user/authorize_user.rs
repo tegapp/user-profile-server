@@ -26,27 +26,21 @@ pub async fn authorize_user(
     }
 
     // Upsert the user
-    let user = sqlx::query_as!(
+    let mut user = sqlx::query_as!(
         User,
         "
             INSERT INTO users(
                 firebase_uid,
-                name,
                 email,
                 email_verified
             ) VALUES (
-                $1, $2, $3, $4
+                $1, $2, $3
             )
-            ON CONFLICT (firebase_uid) DO UPDATE
-            SET
-                name=$2,
-                email=$3,
-                email_verified=$4
+            ON CONFLICT (firebase_uid) DO NOTHING
             RETURNING *
         ",
         // TODO: upsert params
         firebase_uid,
-        payload.name,
         payload.email,
         payload.email_verified
     )
@@ -54,6 +48,26 @@ pub async fn authorize_user(
         .await
         .chain_err(|| "PG error authorizing user")?
         .ok_or(unauthorized())?;
+
+    if user.email_verified != payload.email_verified {
+        user.email_verified = payload.email_verified;
+
+        let _ = sqlx::query_as!(
+            User,
+            "
+                UPDATE users
+                SET email_verified=$1
+                WHERE firebase_uid = $2
+                RETURNING *
+            ",
+            payload.email_verified,
+            firebase_uid,
+        )
+            .fetch_optional(&mut context.sqlx_db().await?)
+            .await
+            .chain_err(|| "PG error authorizing user")?
+            .ok_or(unauthorized())?;
+    }
 
     Ok(user)
 }
