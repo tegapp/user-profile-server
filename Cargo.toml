@@ -44,3 +44,5 @@ frank_jwt = "3.1.2"
 surf = "2.0.0-alpha.0"
 http-client = { version = "1.1.1", features = ["native_client"] }
 openssl = "0.10.28"
+
+gravatar = "0.2.0"
