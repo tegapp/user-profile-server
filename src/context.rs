@@ -1,14 +1,15 @@
 use std::sync::Arc;
 use crate::ResultExt;
 // use futures::prelude::*;
+use tokio::sync::RwLock;
 
 pub struct Context {
     pub sqlx_pool: Arc<sqlx::PgPool>,
     pub user: Option<crate::user::User>,
     // pub surf: surf::Client<http_client::native::NativeClient>,
     pub surf: Arc<surf::Client<http_client::native::NativeClient>>,
-    pub auth_pem_keys: Arc<Vec<Vec<u8>>>,
-    pub ice_servers: Arc<Vec<crate::ice_server::IceServer>>,
+    pub auth_pem_keys: Arc<RwLock<Vec<Vec<u8>>>>,
+    pub ice_servers: Arc<RwLock<Vec<crate::ice_server::IceServer>>>,
 }
 
 // To make our context usable by Juniper, we have to implement a marker trait.
@@ -19,8 +20,8 @@ impl Context {
         authorization_header: Option<String>,
         sqlx_pool: Arc<sqlx::PgPool>,
         surf_client: Arc<surf::Client<http_client::native::NativeClient>>,
-        auth_pem_keys: Arc<Vec<Vec<u8>>>,
-        ice_servers: Arc<Vec<crate::ice_server::IceServer>>,
+        auth_pem_keys: Arc<RwLock<Vec<Vec<u8>>>>,
+        ice_servers: Arc<RwLock<Vec<crate::ice_server::IceServer>>>,
     ) -> Result<Self, crate::Error> {
         let mut context = Context {
             sqlx_pool,

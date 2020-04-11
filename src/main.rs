@@ -56,15 +56,53 @@ async fn main() -> Result<()> {
     });
 
     // Pre-caching ice servers and pem keys
-    let ice_servers = Arc::new(ice_server::get_ice_servers().await?);
-    let pem_keys = Arc::new(user::jwt::get_pem_keys().await?);
+    use tokio::sync::RwLock;
 
-    tokio::spawn(async {
-        info!("Firebase Certs and WebRTC ICE servers will refresh in an hour");
-        tokio::time::delay_for(std::time::Duration::from_secs(60 * 60)).await;
+    let ice_servers = ice_server::get_ice_servers().await?;
+    let ice_servers = Arc::new(RwLock::new(ice_servers));
 
-        info!("Restarting server to refresh Firebase certs and WebRTC ICE servers");
-        std::process::exit(0);
+    let pem_keys = user::jwt::get_pem_keys().await?;
+    let pem_keys = Arc::new(RwLock::new(pem_keys));
+
+    let ice_servers_for_refresh = Arc::clone(&ice_servers);
+    let pem_keys_for_refresh = Arc::clone(&pem_keys);
+
+    tokio::spawn(async move {
+        loop {
+            info!("Firebase Certs and WebRTC ICE servers will refresh in an hour");
+            tokio::time::delay_for(std::time::Duration::from_secs(60 * 60)).await;
+            // tokio::time::delay_for(std::time::Duration::from_secs(2)).await;
+
+            info!("Refreshing Firebase certs and WebRTC ICE servers...");
+
+            let pem_keys_for_refresh = Arc::clone(&pem_keys_for_refresh);
+            let ice_servers_for_refresh = Arc::clone(&ice_servers_for_refresh);
+
+            // Pem Keys Refresh
+            let next_pem_keys = user::jwt::get_pem_keys()
+                .await
+                .expect("Unable to refresh Firebase certs");
+
+            let mut writer = pem_keys_for_refresh
+                .write()
+                .await;
+
+            *writer = next_pem_keys;
+
+            drop(writer);
+
+            // ICE Servers Refresh
+            let next_ice_servers = ice_server::get_ice_servers().await
+                .expect("Unable to refresh Twilio ICE Servers");
+
+            let mut writer = ice_servers_for_refresh
+                .write()
+                .await;
+
+            *writer = next_ice_servers;
+
+            drop(writer);
+        }
     });
 
     let homepage = warp::path::end().map(|| {
