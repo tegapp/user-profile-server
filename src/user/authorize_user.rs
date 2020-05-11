@@ -26,39 +26,57 @@ pub async fn authorize_user(
     }
 
     // Upsert the user
-    let mut user = sqlx::query_as!(
+    let user = sqlx::query_as!(
         User,
         "SELECT * FROM users WHERE firebase_uid=$1",
         firebase_uid,
     )
         .fetch_optional(&mut context.sqlx_db().await?)
         .await
-        .chain_err(|| "PG error authorizing user")?
-        .ok_or(unauthorized())?;
+        .chain_err(|| "PG error authorizing user")?;
 
-    if user.email_verified != payload.email_verified || user.email != payload.email {
-        user.email = payload.email.to_owned();
-        user.email_verified = payload.email_verified;
+    let user = if let Some(mut user) = user {
+        if user.email_verified != payload.email_verified || user.email != payload.email {
+            user.email = payload.email.to_owned();
+            user.email_verified = payload.email_verified;
 
-        let _ = sqlx::query_as!(
+            let _ = sqlx::query_as!(
+                User,
+                "
+                    UPDATE users
+                    SET
+                        email=$2,
+                        email_verified=$3
+                    WHERE firebase_uid = $1
+                    RETURNING *
+                ",
+                firebase_uid,
+                payload.email,
+                payload.email_verified
+            )
+                .fetch_optional(&mut context.sqlx_db().await?)
+                .await
+                .chain_err(|| "PG error authorizing user")?
+                .ok_or(unauthorized())?;
+        }
+
+        user
+    } else {
+        sqlx::query_as!(
             User,
             "
-                UPDATE users
-                SET
-                    email=$2,
-                    email_verified=$3
-                WHERE firebase_uid = $1
+                INSERT INTO users (firebase_uid, email, email_verified)
+                VALUES ($1, $2, $3)
                 RETURNING *
             ",
             firebase_uid,
             payload.email,
             payload.email_verified
         )
-            .fetch_optional(&mut context.sqlx_db().await?)
+            .fetch_one(&mut context.sqlx_db().await?)
             .await
             .chain_err(|| "PG error authorizing user")?
-            .ok_or(unauthorized())?;
-    }
+    };
 
     Ok(user)
 }
