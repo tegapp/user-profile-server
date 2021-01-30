@@ -8,41 +8,26 @@ edition = "2018"
 
 [dependencies]
 dotenv = "0.15.0"
-# juniper = "0.14.2"
-# juniper_hyper = "0.5.2"
-# hyper  = "0.13.1"
-
-tokio = { version = "0.2", features = ["full"] }
-warp = "0.2.2"
-futures = { version = "0.3.4", features = ["compat"] }
-futures-util = "0.3.4"
-# reqwest = { version = "0.9.19" }
-
-juniper = { git = "https://github.com/graphql-rust/juniper" }
-
-log = "0.4"
-pretty_env_logger = "0.3"
-reqwest = { version = "0.10", features = ["json"] }
-# tokio = { version = "0.2", features = ["full"] }
-# futures03 = { package = "futures", version = "0.3.1", features = ["compat"] }
-# futures = { package = "futures", version = "0.1.29" }
+sqlx = { version = "0.4.2", features = [ "runtime-tokio-rustls", "postgres", "offline", "json", "macros", "chrono" ] }
+anyhow = "1.0"
+async-trait = "0.1.36"
+tracing = "0.1.19"
+tracing-subscriber = "0.2"
+warp = "0.3.0"
+futures = "0.3.12"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.44"
 url = "2.1.1"
-sqlx = { version = "0.3.0-alpha.2", features = ["postgres", "chrono"] }
-sqlx-core = { version = "0.3.0-alpha.2" }
-rand = "0.7.3"
-error-chain = "0.12.2"
-bcrypt = "0.6"
-cookie = "0.13.3"
-consistenttime = "0.2.0"
-base64 ="0.11.0"
-async-trait = "0.1.24"
-ring = "0.16.11"
 chrono = { version = "0.4.10", features = ["serde"] }
 frank_jwt = "3.1.2"
-surf = "2.0.0-alpha.0"
+surf = "2.1.0"
 http-client = { version = "1.1.1", features = ["native_client"] }
 openssl = "0.10.28"
-
 gravatar = "0.2.0"
+# async-graphql-warp = "2.5.1"
+# async-graphql = "2.5.1"
+async-graphql-warp = { git = "https://github.com/async-graphql/async-graphql.git" }
+async-graphql = { git = "https://github.com/async-graphql/async-graphql.git" }
+tokio = { version = "1.1.0", features = ["full"] }
+arc-swap = "1.2.0"
+eyre = "0.6.5"

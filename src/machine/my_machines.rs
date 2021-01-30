@@ -16,7 +16,7 @@ pub async fn my_machines(context: &Context, slug: Option<String>) -> crate::Resu
             .fetch(&mut context.sqlx_db().await?)
             .try_collect()
             .await
-            .chain_err(|| "Unable to load my_machines from pg")?
+            .wrap_err( "Unable to load my_machines from pg")?
     } else {
         sqlx::query_as!(
             Machine,
@@ -26,7 +26,7 @@ pub async fn my_machines(context: &Context, slug: Option<String>) -> crate::Resu
             .fetch(&mut context.sqlx_db().await?)
             .try_collect()
             .await
-            .chain_err(|| "Unable to load my_machines from pg")?
+            .wrap_err( "Unable to load my_machines from pg")?
     };
 
     Ok(machines)

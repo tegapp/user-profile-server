@@ -8,11 +8,11 @@ pub async fn remove_machine(context: &Context, machine_id: String) -> crate::Res
             DELETE FROM machines WHERE user_id = $1 AND id = $2
         ",
         user_id,
-        machine_id.parse::<i32>().chain_err(|| "Invalid machine id")?
+        machine_id.parse::<i32>().wrap_err( "Invalid machine id")?
     )
         .execute(&mut context.sqlx_db().await?)
         .await
-        .chain_err(|| "Unable to delete machine")?;
+        .wrap_err( "Unable to delete machine")?;
 
     Ok(None)
 }

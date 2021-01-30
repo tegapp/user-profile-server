@@ -29,7 +29,7 @@ pub async fn create_machine(context: &Context, input: CreateMachineInput) -> cra
     )
         .fetch_one(&mut context.sqlx_db().await?)
         .await
-        .chain_err(|| "Unable to insert new machine")?;
+        .wrap_err( "Unable to insert new machine")?;
 
     Ok(machine)
 }

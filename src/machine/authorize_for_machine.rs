@@ -32,7 +32,7 @@ pub async fn authorize_for_machine(
     )
         .fetch_one(&mut context.sqlx_db().await?)
         .await
-        .chain_err(|| "Unable to select machine for authorization")?;
+        .wrap_err( "Unable to select machine for authorization")?;
 
     // #[derive(Debug, Serialize, Deserialize)]
     // struct Claims {

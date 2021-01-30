@@ -24,12 +24,12 @@ pub async fn set_machine_name(context: &Context, input: SetMachineName) -> crate
             RETURNING *
         ",
         user_id,
-        input.id.parse::<i32>().chain_err(|| "Invalid machine id")?,
+        input.id.parse::<i32>().wrap_err( "Invalid machine id")?,
         input.name
     )
         .fetch_one(&mut context.sqlx_db().await?)
         .await
-        .chain_err(|| "Unable to set machine name")?;
+        .wrap_err( "Unable to set machine name")?;
 
     Ok(machine)
 }

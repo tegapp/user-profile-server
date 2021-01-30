@@ -1,11 +1,14 @@
-use crate::{ ResultExt };
 use serde::{Deserialize, Serialize};
-
+use surf::http::auth::BasicAuth;
 use std::fmt;
 use std::marker::PhantomData;
-
 use serde::de;
 use serde::de::Deserializer;
+use eyre::{
+    eyre,
+    Result,
+    Context as _,
+};
 
 fn string_or_seq_string<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
     where D: Deserializer<'de>
@@ -35,7 +38,7 @@ fn string_or_seq_string<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error
     deserializer.deserialize_any(StringOrVec(PhantomData))
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, juniper::GraphQLObject)]
+#[derive(async_graphql::SimpleObject, Serialize, Deserialize, Default, Clone)]
 pub struct IceServer {
     url: Option<String>,
     #[serde(deserialize_with = "string_or_seq_string")]
@@ -64,32 +67,36 @@ fn dev_twillio_mock() -> TwillioResponse {
     }
 }
 
-pub async fn get_ice_servers() -> crate::Result<Vec<IceServer>> {
+pub async fn get_ice_servers() -> Result<Vec<IceServer>> {
     // let _ = context.user_id().ok_or(unauthorized())?;
 
-    let rust_env = std::env::var("RUST_ENV").chain_err(|| "RUST_ENV not found")?;
+    let rust_env = std::env::var("RUST_ENV")
+        .wrap_err( "RUST_ENV not found")?;
 
-    let res = if rust_env == "development" && std::env::var("TWILIO_SID").is_err() {
+    let res = if
+        rust_env == "development"
+        && std::env::var("TWILIO_SID").is_err()
+    {
         dev_twillio_mock()
     } else {
-        let twilio_sid = std::env::var("TWILIO_SID").chain_err(|| "TWILIO_SID not found")?;
-        let twilio_token = std::env::var("TWILIO_TOKEN").chain_err(|| "TWILIO_TOKEN not found")?;
+        let twilio_sid = std::env::var("TWILIO_SID")
+            .wrap_err( "TWILIO_SID not found")?;
+        let twilio_token = std::env::var("TWILIO_TOKEN")
+            .wrap_err( "TWILIO_TOKEN not found")?;
 
         let uri = format!("https://api.twilio.com/2010-04-01/Accounts/{:}/Tokens.json", twilio_sid);
 
-        let client = reqwest::Client::new();
-
         info!("Downloading WebRTC ICE server list");
 
-        let res = client.post(&uri)
-            .basic_auth(twilio_sid, Some(twilio_token))
-            .send()
+        let res = surf::post(&uri)
+            .header(
+                "Authorization",
+                BasicAuth::new(twilio_sid, twilio_token).value(),
+            )
+            .recv_json::<TwillioResponse>()
             .await
-            .and_then(|res| res.error_for_status())
-            .chain_err(|| "Unable to fetch WebRTC ICE server list")?
-            .json::<TwillioResponse>()
-            .await
-            .chain_err(|| "Unable to parse WebRTC ICE server list")?;
+            .map_err(|err| eyre!(err)) // TODO: Remove me when surf 2.0 is released
+            .wrap_err( "Unable to fetch WebRTC ICE server list")?;
 
         info!("Downloading WebRTC ICE server list  [DONE]");
 

@@ -11,8 +11,11 @@ mod my_machines;
 pub use my_machines::*;
 
 pub struct Machine {
-    pub id: i32,
-    pub user_id: i32,
+    pub id: crate::DbID,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+
+    pub user_id: crate::DbID,
     pub public_key: String,
     pub name: String,
     pub slug: String,
