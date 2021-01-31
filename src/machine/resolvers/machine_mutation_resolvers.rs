@@ -57,7 +57,7 @@ impl Mutation {
         let db: &crate::Db = ctx.data()?;
         let auth: &crate::AuthContext = ctx.data()?;
 
-        let machine = auth.require_machine()?;
+        let host = auth.require_host()?;
 
         // TODO
 
@@ -72,7 +72,7 @@ impl Mutation {
         let db: &crate::Db = ctx.data()?;
         let auth: &crate::AuthContext = ctx.data()?;
 
-        let machine = auth.require_machine()?;
+        let host = auth.require_host()?;
 
         // TODO
 
@@ -88,14 +88,14 @@ impl Mutation {
         let db: &crate::Db = ctx.data()?;
         let auth: &crate::AuthContext = ctx.data()?;
 
-        let machine = auth.require_machine()?;
+        let host = auth.require_host()?;
 
         // TODO
 
         Ok(None)
     }
 
-    async fn remove_user_from_machine<'ctx>(
+    async fn remove_user_from_host<'ctx>(
         &self,
         ctx: &'ctx Context<'_>,
         machine_id: ID
@@ -109,7 +109,7 @@ impl Mutation {
 
         sqlx::query!(
             "
-                DELETE FROM machines WHERE user_id = $1 AND id = $2
+                DELETE FROM hosts_users WHERE user_id = $1 AND id = $2
             ",
             user.id,
             machine_id,

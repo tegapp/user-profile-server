@@ -1,8 +1,9 @@
+#![type_length_limit="2418452"]
 #[macro_use] extern crate tracing;
 
 use async_graphql::{EmptySubscription, http::{playground_source, GraphQLPlaygroundConfig}};
 use async_graphql::Schema;
-use async_graphql_warp::{Response, graphql_subscription_with_data};
+use async_graphql_warp::{graphql_subscription_with_data};
 use ice_server::IceServer;
 use sqlx::postgres::PgPoolOptions;
 use user::jwt::PemKey;
@@ -19,17 +20,18 @@ use arc_swap::ArcSwap;
 mod auth_context;
 pub use auth_context::AuthContext;
 
-pub mod user;
-pub mod machine;
+pub mod host;
 pub mod ice_server;
+pub mod machine;
 pub mod resolvers;
+pub mod user;
 
 type Db = sqlx::Pool<sqlx::Postgres>;
 type DbId = i64;
 
 type PemKeyList = Arc<ArcSwap<Vec<PemKey>>>;
 type IceServerList = Arc<ArcSwap<Vec<IceServer>>>;
-// type AppSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
+type AppSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub fn unauthorized() -> Error {
     eyre!("Unauthorized Access")
@@ -44,7 +46,7 @@ impl Void {
     }
 }
 
-struct QueryRoot;
+pub struct QueryRoot;
 
 #[async_graphql::Object]
 impl QueryRoot {
@@ -53,7 +55,7 @@ impl QueryRoot {
     }
 }
 
-struct MutationRoot;
+pub struct MutationRoot;
 
 #[async_graphql::Object]
 impl MutationRoot {
@@ -157,30 +159,18 @@ async fn main() -> Result<()> {
             let db = db_clone.clone();
             let pem_keys = pem_clone.clone();
 
-            async move {
-                let (schema, request): (
-                    Schema<QueryRoot, MutationRoot, EmptySubscription>,
-                    async_graphql::Request,
-                ) = graphql_tuple;
+            let (schema, request): (
+                AppSchema,
+                async_graphql::Request,
+            ) = graphql_tuple;
 
-                let auth = AuthContext::http_post_auth(
-                    &db,
-                    &pem_keys,
-                    authorization_header,
-                ).await;
-
-                let auth = match auth {
-                    Ok(auth) => auth,
-                    Err(err) => {
-                        warn!("Auth Error: {:?}", err);
-                        return Err(warp::reject::custom(crate::InternalServerError))
-                    }
-                };
-
-                let request = request.data(auth);
-
-                Ok(Response::from(schema.execute(request).await))
-            }
+            AuthContext::http_post_auth(
+                db,
+                pem_keys,
+                authorization_header,
+                schema,
+                request,
+            )
         });
 
     let db_clone = db.clone();
@@ -189,14 +179,7 @@ async fn main() -> Result<()> {
         move |json| {
             let db = db_clone.clone();
 
-            async move {
-                let auth = AuthContext::websocket_auth(&db, json).await?;
-
-                let mut data = async_graphql::Data::default();
-                data.insert(auth);
-
-                Ok(data)
-            }
+            AuthContext::websocket_auth(db, json)
         },
     );
 
@@ -216,9 +199,9 @@ async fn main() -> Result<()> {
     let cors_route = warp::options()
         .map(warp::reply);
 
-    let routes = graphql_subscription
-        .or(graphql_playground)
+    let routes = graphql_playground
         .or(graphql_post)
+        .or(graphql_subscription)
         .or(cors_route)
         .with(cors);
 

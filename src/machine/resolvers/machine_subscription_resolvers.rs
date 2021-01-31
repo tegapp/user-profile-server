@@ -23,7 +23,7 @@ impl MachineSubscriptionResolvers {
         let db: &crate::Db = ctx.data()?;
         let auth: &crate::AuthContext = ctx.data()?;
 
-        let machine = auth.require_machine()?;
+        let host = auth.require_host()?;
 
         // TODO
         let stream = futures::stream::empty();
