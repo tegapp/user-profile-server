@@ -11,3 +11,4 @@
 // pub use my_machines::*;
 
 pub mod machine_mutation_resolvers;
+pub mod machine_subscription_resolvers;

@@ -3,26 +3,97 @@ use eyre::{
     // Result,
     Context as _,
 };
-use async_graphql::{
-    Context,
-    ID,
-    FieldResult,
-};
+use async_graphql::{Context, FieldResult, ID};
+
+#[derive(async_graphql::InputObject)]
+pub struct RegisterMachinesInput {
+    pub machines: MachineInput,
+}
+
+#[derive(async_graphql::InputObject)]
+pub struct MachineInput {
+    id: ID,
+    name: String,
+}
+
+#[derive(async_graphql::InputObject)]
+pub struct AnswerSignalInput {
+    #[graphql(name = "sessionID")]
+    pub session_id: ID,
+    pub answer: SessionDescriptionInput,
+    pub ice_candidates: IceCandidateInput,
+}
+
+#[derive(async_graphql::InputObject)]
+pub struct SessionDescriptionInput {
+    pub sdp: async_graphql::Json<serde_json::Value>,
+    pub desc_type: async_graphql::Json<serde_json::Value>,
+}
+
+#[derive(async_graphql::InputObject)]
+pub struct IceCandidateInput {
+    pub candidate: String,
+    pub mid: String,
+}
+
+
+#[derive(async_graphql::InputObject)]
+#[graphql(name = "SendICECandidatesInput")]
+pub struct SendIceCandidatesInput {
+    #[graphql(name = "sessionID")]
+    pub session_id: ID,
+    pub ice_candidates: IceCandidateInput,
+}
 
 pub struct Mutation;
 
 #[async_graphql::Object]
 impl Mutation {
-    // async fn create_machine(
-    //     context: &Context,
-    //     input: machine::CreateMachineInput
-    // ) -> FieldResult<Machine> {
-    //     Ok(machine::create_machine(context, input).await?)
-    // }
+    async fn register_machines<'ctx>(
+        &self,
+        ctx: &'ctx Context<'_>,
+        input: RegisterMachinesInput,
+    ) -> FieldResult<Option<crate::Void>> {
+        let db: &crate::Db = ctx.data()?;
+        let auth: &crate::AuthContext = ctx.data()?;
 
-    // async fn set_machine_name(context: &Context, input: machine::SetMachineName) -> FieldResult<Machine> {
-    //     Ok(machine::set_machine_name(context, input).await?)
-    // }
+        let machine = auth.require_machine()?;
+
+        // TODO
+
+        Ok(None)
+    }
+
+    async fn answer_signal<'ctx>(
+        &self,
+        ctx: &'ctx Context<'_>,
+        input: RegisterMachinesInput,
+    ) -> FieldResult<Option<crate::Void>> {
+        let db: &crate::Db = ctx.data()?;
+        let auth: &crate::AuthContext = ctx.data()?;
+
+        let machine = auth.require_machine()?;
+
+        // TODO
+
+        Ok(None)
+    }
+
+    #[graphql(name = "sendICECandidates")]
+    async fn send_ice_candidates<'ctx>(
+        &self,
+        ctx: &'ctx Context<'_>,
+        input: SendIceCandidatesInput,
+    ) -> FieldResult<Option<crate::Void>> {
+        let db: &crate::Db = ctx.data()?;
+        let auth: &crate::AuthContext = ctx.data()?;
+
+        let machine = auth.require_machine()?;
+
+        // TODO
+
+        Ok(None)
+    }
 
     async fn remove_user_from_machine<'ctx>(
         &self,

@@ -5,11 +5,11 @@ use eyre::{
     // Context as _,
 };
 
-use crate::user::User;
+use crate::{machine::Machine, user::User};
 
 pub struct AuthContext {
-    user: Option<crate::user::User>,
-    // pub machine: Option<crate::machine::Machine>,
+    user: Option<User>,
+    machine: Option<Machine>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -42,6 +42,7 @@ impl AuthContext {
 
         let auth = AuthContext {
             user,
+            machine: None,
         };
 
         Ok(auth)
@@ -62,6 +63,7 @@ impl AuthContext {
 
         let auth = AuthContext {
             user: None,
+            machine: None,
         };
 
         Ok(auth)
@@ -77,6 +79,14 @@ impl AuthContext {
 
     pub fn require_authorized_user(&self) -> Result<&User> {
         self.user
+            .as_ref()
+            .ok_or_else(||
+                eyre!("Not authorized.")
+            )
+    }
+
+    pub fn require_machine(&self) -> Result<&Machine> {
+        self.machine
             .as_ref()
             .ok_or_else(||
                 eyre!("Not authorized.")
