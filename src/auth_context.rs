@@ -1,13 +1,14 @@
-use async_graphql::from_value;
 use serde::{Serialize, Deserialize};
 use eyre::{
-    // eyre,
+    eyre,
     Result,
     // Context as _,
 };
 
+use crate::user::User;
+
 pub struct AuthContext {
-    pub user: Option<crate::user::User>,
+    user: Option<crate::user::User>,
     // pub machine: Option<crate::machine::Machine>,
 }
 
@@ -68,5 +69,17 @@ impl AuthContext {
 
     pub fn user_id(&self) -> Option<crate::DbId> {
         self.user.as_ref().map(|user| user.id)
+    }
+
+    pub fn allow_unauthorized_user(&self) -> Option<&User> {
+        self.user.as_ref()
+    }
+
+    pub fn require_authorized_user(&self) -> Result<&User> {
+        self.user
+            .as_ref()
+            .ok_or_else(||
+                eyre!("Not authorized.")
+            )
     }
 }

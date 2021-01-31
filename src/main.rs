@@ -20,21 +20,28 @@ mod auth_context;
 pub use auth_context::AuthContext;
 
 pub mod user;
-// pub mod machine;
+pub mod machine;
 pub mod ice_server;
-// pub mod graphql_schema;
-// pub mod context;
-
+pub mod resolvers;
 
 type Db = sqlx::Pool<sqlx::Postgres>;
 type DbId = i64;
 
 type PemKeyList = Arc<ArcSwap<Vec<PemKey>>>;
-// type IceServerList = Arc<ArcSwap<Vec<IceServer>>>;
+type IceServerList = Arc<ArcSwap<Vec<IceServer>>>;
 // type AppSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub fn unauthorized() -> Error {
     eyre!("Unauthorized Access")
+}
+
+pub struct Void;
+
+#[async_graphql::Object]
+impl Void {
+    pub async fn id(&self) -> async_graphql::ID {
+        "VOID".into()
+    }
 }
 
 struct QueryRoot;
@@ -119,9 +126,6 @@ async fn main() -> Result<()> {
                 tokio::time::sleep(std::time::Duration::from_secs(60 * 60)).await;
 
                 info!("Refreshing Firebase certs and WebRTC ICE servers...");
-
-                // let pem_keys_for_refresh = Arc::clone(&pem_keys_for_refresh);
-                // let ice_servers_for_refresh = Arc::clone(&ice_servers_for_refresh);
 
                 // Pem Keys Refresh
                 let next_pem_keys = user::jwt::get_pem_keys()
