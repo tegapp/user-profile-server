@@ -11,6 +11,7 @@ pub struct Host {
     pub updated_at: DateTime<Utc>,
     // Props
     pub identity_public_key: String,
+    pub slug: String,
     // pub server_version: String,
     // pub name: Option<String>,
 }

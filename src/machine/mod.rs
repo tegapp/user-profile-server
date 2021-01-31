@@ -13,8 +13,7 @@ pub struct Machine {
 
     pub host_id: crate::DbId,
     pub name: String,
-    pub contextual_id: String,
-    // pub slug: String,
+    pub slug: String,
 }
 
 #[async_graphql::Object]
@@ -23,10 +22,12 @@ impl Machine {
     async fn id(&self) -> ID {
         self.id.into()
     }
+
     async fn name(&self) -> &String {
         &self.name
     }
-    // async fn slug(&self) -> &String {
-    //     &self.slug
-    // }
+
+    async fn slug(&self) -> &String {
+        &self.slug
+    }
 }

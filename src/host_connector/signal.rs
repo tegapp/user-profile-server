@@ -1,0 +1,32 @@
+use async_graphql::ID;
+use futures::SinkExt;
+use std::{
+    boxed::Box,
+};
+use eyre::{
+    // eyre,
+    Result,
+    // Context as _,
+};
+
+use super::HostConnector;
+
+#[xactor::message(result = "Result<()>")]
+#[derive(async_graphql::SimpleObject)]
+pub struct Signal {
+    #[graphql(name = "sessionID")]
+    pub session_id: ID,
+    pub offer: async_graphql::Json<serde_json::Value>,
+}
+
+#[async_trait::async_trait]
+impl xactor::Handler<Signal> for HostConnector {
+    async fn handle(
+        &mut self,
+        _ctx: &mut xactor::Context<Self>,
+        msg: Signal
+    ) -> Result<()> {
+        self.signals_sender.send(msg).await?;
+        Ok(())
+    }
+}

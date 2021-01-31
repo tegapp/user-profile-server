@@ -1,9 +1,13 @@
-#![type_length_limit="2418452"]
+#![type_length_limit="2418556"]
 #[macro_use] extern crate tracing;
+#[macro_use] extern crate nanoid;
 
 use async_graphql::{EmptySubscription, http::{playground_source, GraphQLPlaygroundConfig}};
 use async_graphql::Schema;
 use async_graphql_warp::{graphql_subscription_with_data};
+use dashmap::DashMap;
+use futures::channel::oneshot;
+use host_connector::{HostConnectionResponse, HostConnector};
 use ice_server::IceServer;
 use sqlx::postgres::PgPoolOptions;
 use user::jwt::PemKey;
@@ -21,6 +25,7 @@ mod auth_context;
 pub use auth_context::AuthContext;
 
 pub mod host;
+pub mod host_connector;
 pub mod ice_server;
 pub mod machine;
 pub mod resolvers;
@@ -31,6 +36,11 @@ type DbId = i64;
 
 type PemKeyList = Arc<ArcSwap<Vec<PemKey>>>;
 type IceServerList = Arc<ArcSwap<Vec<IceServer>>>;
+type HostConnectorsMap = Arc<DashMap<crate::DbId, xactor::WeakAddr<HostConnector>>>;
+type ConnectionResponseSenders = DashMap<
+    (crate::DbId, async_graphql::ID),
+    oneshot::Sender<HostConnectionResponse>,
+>;
 type AppSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub fn unauthorized() -> Error {
@@ -105,6 +115,8 @@ async fn main() -> Result<()> {
         pem_keys,
     )));
 
+    let host_connectors: HostConnectorsMap = Arc::new(DashMap::new());
+    let connection_response_senders: ConnectionResponseSenders = DashMap::new();
 
     let schema = Schema::build(
         QueryRoot,
@@ -115,6 +127,8 @@ async fn main() -> Result<()> {
         // .data(surf_client)
         .data(ice_servers.clone())
         .data(pem_keys.clone())
+        .data(host_connectors)
+        .data(connection_response_senders)
         .finish();
 
 

@@ -20,7 +20,7 @@ CREATE TABLE hosts (
     identity_public_key TEXT NOT NULL,
     -- server_version TEXT NOT NULL,
     -- name TEXT,
-    -- slug TEXT NOT NULL,
+    slug TEXT NOT NULL,
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -37,8 +37,7 @@ CREATE TABLE machines (
     FOREIGN KEY (host_id) REFERENCES users (id),
 
     name TEXT NOT NULL,
-    -- contextual id for this machine specific to it's host and not globally unique
-    contextual_id TEXT NOT NULL,
+    slug TEXT NOT NULL,
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -46,7 +45,7 @@ CREATE TABLE machines (
 SELECT sqlx_manage_updated_at('machines');
 
 CREATE INDEX m_user_id on machines (host_id);
-CREATE UNIQUE INDEX m_host_id_contextual_id on machines (host_id, contextual_id);
+CREATE UNIQUE INDEX m_host_id_slug on machines (host_id, slug);
 
 -- hosts_users
 CREATE TABLE hosts_users (
