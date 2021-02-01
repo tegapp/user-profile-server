@@ -98,7 +98,10 @@ impl Mutation {
         input: ConnectToHostInput,
     ) -> FieldResult<HostConnection> {
         let db: &crate::Db = ctx.data()?;
+        let auth: &crate::AuthContext = ctx.data()?;
         let host_connectors: &crate::HostConnectorsMap = ctx.data()?;
+
+        let user = auth.require_authorized_user()?;
 
         let host = sqlx::query_as!(
             Host,
@@ -120,6 +123,9 @@ impl Mutation {
         let session_id: ID = nanoid!().into();
 
         connector.call(Signal {
+            user_id: user.id.into(),
+            email: Some(user.email.clone()),
+            email_verified: user.email_verified,
             session_id: session_id.clone(),
             offer: input.offer,
         }).await??;

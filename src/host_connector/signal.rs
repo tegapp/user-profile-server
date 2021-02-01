@@ -14,6 +14,10 @@ use super::HostConnector;
 #[xactor::message(result = "Result<()>")]
 #[derive(async_graphql::SimpleObject)]
 pub struct Signal {
+    #[graphql(name = "userID")]
+    pub user_id: async_graphql::ID,
+    pub email: Option<String>,
+    pub email_verified: bool,
     #[graphql(name = "sessionID")]
     pub session_id: ID,
     pub offer: async_graphql::Json<serde_json::Value>,

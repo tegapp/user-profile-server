@@ -12,6 +12,7 @@ use eyre::{
 pub struct JWTPayload {
     pub sub: String,
     pub aud: String,
+    pub iss: String,
     pub email: String,
     pub email_verified: bool,
 }
@@ -82,6 +83,10 @@ pub async fn validate_jwt(
 
     if payload.aud != firebase_project_id {
         Err(eyre!("Invalid JWT Audience"))?
+    }
+
+    if payload.iss != format!("https://securetoken.google.com/{}", firebase_project_id) {
+        Err(eyre!("Invalid JWT issuer"))?
     }
 
     Ok(payload)
