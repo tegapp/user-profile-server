@@ -13,10 +13,11 @@ use crate::{ice_server::IceServer, user::User};
 
 use super::my_namespace_resolvers::MyNamespace;
 
-pub struct UserQuery;
+#[derive(Default, Clone, Copy)]
+pub struct Query;
 
 #[async_graphql::Object]
-impl UserQuery {
+impl Query {
     async fn current_user<'ctx>(&self, ctx: &'ctx Context<'_>) -> FieldResult<Option<&'ctx User>> {
         let auth: &crate::AuthContext = ctx.data()?;
 

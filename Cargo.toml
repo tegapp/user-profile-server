@@ -8,11 +8,13 @@ edition = "2018"
 
 [dependencies]
 dotenv = "0.15.0"
-sqlx = { version = "0.4.2", features = [ "runtime-tokio-rustls", "postgres", "offline", "json", "macros", "chrono" ] }
+# Using git version until tokio 1.0 support drops in sqlx 0.5
+sqlx = { git = "https://github.com/launchbadge/sqlx.git", features = [ "runtime-tokio-rustls", "postgres", "offline", "json", "macros", "chrono" ] }
 anyhow = "1.0"
 async-trait = "0.1.36"
-tracing = "0.1.19"
+tracing = "0.1.22"
 tracing-subscriber = "0.2"
+tracing-futures = "0.2.4"
 warp = "0.3.0"
 futures = "0.3.12"
 serde = { version = "1.0.104", features = ["derive"] }
@@ -22,7 +24,7 @@ chrono = { version = "0.4.10", features = ["serde"] }
 frank_jwt = "3.1.2"
 surf = "2.1.0"
 http-client = { version = "1.1.1", features = ["native_client"] }
-openssl = "0.10.28"
+openssl = "0.10.32"
 gravatar = "0.2.0"
 # async-graphql-warp = "2.5.1"
 # async-graphql = "2.5.1"
@@ -34,4 +36,5 @@ eyre = "0.6.5"
 dashmap = "4.0.2"
 xactor = "0.7.11"
 nanoid = "0.3.0"
-tracing-futures = "0.2.4"
+bs58 = "0.4.0"
+lazy_static = "1.4.0"

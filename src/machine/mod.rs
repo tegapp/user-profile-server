@@ -4,8 +4,6 @@ use async_graphql::{
     ID,
 };
 
-mod resolvers;
-
 pub struct Machine {
     pub id: crate::DbId,
     pub created_at: DateTime<Utc>,

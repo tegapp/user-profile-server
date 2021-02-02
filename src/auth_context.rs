@@ -4,11 +4,9 @@ use eyre::{
     Result,
     Context as _,
 };
+use async_graphql::extensions::TracingConfig;
 
-use crate::{
-    host::Host,
-    user::User,
-};
+use crate::{b58_fingerprint, host::Host, user::User};
 
 pub struct AuthContext {
     user: Option<User>,
@@ -16,16 +14,12 @@ pub struct AuthContext {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct JWTHeader {
+#[serde(rename_all="camelCase")]
+pub struct JWTPayload {
     #[serde(rename = "sub")]
     pub subject: String,
     #[serde(rename = "aud")]
     pub audience: String,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all="camelCase")]
-pub struct JWTPayload {
     pub self_signature: bool,
 }
 
@@ -38,6 +32,20 @@ struct WebSocketAuthentication {
     /// Verified against the host's identity public key
     self_signed_jwt: String,
 }
+
+// lazy_static! {
+//     static ref ws_root_span: tracing::span::Span = span!(
+//         parent: None,
+//         tracing::Level::INFO,
+//         "ws root",
+//     );
+
+//     static ref req_root_span: tracing::span::Span = span!(
+//         parent: None,
+//         tracing::Level::INFO,
+//         "req root",
+//     );
+// }
 
 impl AuthContext {
     pub async fn http_post_auth(
@@ -74,7 +82,10 @@ impl AuthContext {
             host: None,
         };
 
-        let request = request.data(auth);
+        let request = request
+            .data(auth)
+            .data(TracingConfig::default());
+            // .data(TracingConfig::default().parent_span(req_root_span.clone()));
 
         Ok(async_graphql_warp::Response::from(schema.execute(request).await))
     }
@@ -83,35 +94,43 @@ impl AuthContext {
         db: crate::Db,
         json: serde_json::Value,
     ) -> async_graphql::Result<async_graphql::Data> {
+        Self::websocket_auth_inner(db, json)
+            .await
+            .map_err(|err| {
+                warn!("websocket auth error: {:?}", err);
+                eyre!("Internal Server Error").into()
+            })
+    }
+
+    async fn websocket_auth_inner(
+        db: crate::Db,
+        json: serde_json::Value,
+    ) -> Result<async_graphql::Data> {
+
         let WebSocketAuthentication {
             identity_public_key,
             self_signed_jwt,
         } = serde_json::from_value(json)?;
 
         // Verify the jwt signature
-        let (header, payload) = frank_jwt::decode(
+        let (_, payload) = frank_jwt::decode(
             &self_signed_jwt,
             &identity_public_key,
-            frank_jwt::Algorithm::RS256,
+            frank_jwt::Algorithm::ES256,
             &frank_jwt::ValidationOptions::default(),
         )?;
-
-        // Jwt headers validation
-        let header: JWTHeader = serde_json::from_value(header)
-            .wrap_err("Invalid websocket jwt")?;
-
-        let signalling_url = "https:://signalling.tegapp.com";
-
-        if header.audience != signalling_url {
-            Err(eyre!("Expected JWT aud: {}, got: {}", signalling_url, header.audience))?;
-        }
-
         // JWT payload validation
         let payload: JWTPayload = serde_json::from_value(payload)
             .wrap_err("Invalid websocket jwt")?;
 
         if !payload.self_signature {
             Err(eyre!("JWT payload field 'selfSignature' must be true"))?;
+        }
+
+        let signalling_url = "https:://signalling.tegapp.com";
+
+        if payload.audience != signalling_url {
+            Err(eyre!("Expected JWT aud: {}, got: {}", signalling_url, payload.audience))?;
         }
 
         // Add the host to the database
@@ -126,14 +145,17 @@ impl AuthContext {
         let host = if let Some(host) = host {
             host
         } else {
+            let slug = b58_fingerprint(&identity_public_key)?;
+
             sqlx::query_as!(
                 Host,
                 r#"
-                    INSERT INTO hosts (identity_public_key)
-                    VALUES ($1)
+                    INSERT INTO hosts (identity_public_key, slug)
+                    VALUES ($1, $2)
                     RETURNING *
                 "#,
                 identity_public_key,
+                slug,
             )
                 .fetch_one(&db)
                 .await?
@@ -144,9 +166,10 @@ impl AuthContext {
             host: Some(host),
         };
 
-
         let mut data = async_graphql::Data::default();
         data.insert(auth);
+        data.insert(TracingConfig::default());
+        // data.insert(TracingConfig::default().parent_span(ws_root_span.clone()));
 
         Ok(data)
     }

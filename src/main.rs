@@ -1,8 +1,8 @@
-#![type_length_limit="2418556"]
 #[macro_use] extern crate tracing;
 #[macro_use] extern crate nanoid;
+// #[macro_use] extern crate lazy_static;
 
-use async_graphql::{EmptySubscription, http::{playground_source, GraphQLPlaygroundConfig}};
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::Schema;
 use async_graphql_warp::{graphql_subscription_with_data};
 use dashmap::DashMap;
@@ -24,6 +24,9 @@ use arc_swap::ArcSwap;
 mod auth_context;
 pub use auth_context::AuthContext;
 
+mod b58_fingerprint;
+pub use b58_fingerprint::b58_fingerprint;
+
 pub mod host;
 pub mod host_connector;
 pub mod ice_server;
@@ -41,7 +44,6 @@ type ConnectionResponseSenders = DashMap<
     (crate::DbId, async_graphql::ID),
     oneshot::Sender<HostConnectionResponse>,
 >;
-type AppSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub fn unauthorized() -> Error {
     eyre!("Unauthorized Access")
@@ -56,23 +58,26 @@ impl Void {
     }
 }
 
-pub struct QueryRoot;
+// Schema definition
+type AppSchema = Schema<Query, Mutation, Subscription>;
 
-#[async_graphql::Object]
-impl QueryRoot {
-    pub async fn name(&self) -> bool {
-        false
-    }
-}
+#[derive(async_graphql::MergedObject, Default, Clone, Copy)]
+pub struct Query(
+    resolvers::query_resolvers::Query,
+);
 
-pub struct MutationRoot;
+#[derive(async_graphql::MergedObject, Default, Clone, Copy)]
+pub struct Mutation(
+    host::resolvers::host_mutation_resolvers::HostMutation,
+);
 
-#[async_graphql::Object]
-impl MutationRoot {
-    pub async fn name(&self) -> bool {
-        false
-    }
-}
+// #[derive(async_graphql::MergedSubscription, Default, Clone, Copy)]
+// pub struct Subscription(
+//     host::resolvers::host_subscription_resolvers::HostSubscription,
+// );
+
+pub type Subscription = host::resolvers::host_subscription_resolvers::HostSubscription;
+
 
 #[derive(Debug)]
 pub struct InternalServerError;
@@ -91,6 +96,7 @@ async fn main() -> Result<()> {
     // let surf_client = Arc::new(surf::Client::new());
 
     let database_url = std::env::var("POSTGRESQL_ADDON_URI")
+        .or(std::env::var("DATABASE_URL"))
         .expect("$POSTGRESQL_ADDON_URI must be set");
 
     let db = PgPoolOptions::new()
@@ -119,10 +125,12 @@ async fn main() -> Result<()> {
     let connection_response_senders: ConnectionResponseSenders = DashMap::new();
 
     let schema = Schema::build(
-        QueryRoot,
-        MutationRoot,
-        EmptySubscription,
+        Query::default(),
+        Mutation::default(),
+        Subscription::default(),
     )
+        .extension(async_graphql::extensions::Tracing::default())
+        // .extension(async_graphql::extensions::Logger)
         .data(db.clone())
         // .data(surf_client)
         .data(ice_servers.clone())
@@ -130,7 +138,6 @@ async fn main() -> Result<()> {
         .data(host_connectors)
         .data(connection_response_senders)
         .finish();
-
 
     tokio::spawn({
         let ice_servers = ice_servers.clone();

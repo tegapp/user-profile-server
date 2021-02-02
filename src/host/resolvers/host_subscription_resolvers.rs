@@ -16,11 +16,16 @@ use crate::host_connector::{
     Signal,
 };
 
-struct MachineSubscriptionResolvers;
+#[derive(Default, Clone, Copy)]
+pub struct HostSubscription;
 
 #[Subscription]
-impl MachineSubscriptionResolvers {
-    async fn host_signals<'ctx>(
+impl HostSubscription {
+    /// Receive connection requests from clients.
+    ///
+    /// Each time a client calls `connectToHost(..)` a corresponding Signal is sent
+    /// by this subscription to the host.
+    async fn connection_requested<'ctx>(
         &self,
         ctx: &'ctx Context<'_>,
     ) -> Result<impl Stream<Item = Signal>> {

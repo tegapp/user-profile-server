@@ -4,6 +4,8 @@ use async_graphql::{
     ID,
 };
 
+pub mod resolvers;
+
 #[derive(Debug, Clone)]
 pub struct Host {
     pub id: crate::DbId,

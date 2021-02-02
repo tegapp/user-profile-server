@@ -22,7 +22,7 @@ pub struct MachineInput {
 }
 
 #[derive(async_graphql::InputObject, Debug)]
-pub struct AnswerSignalInput {
+pub struct RespondToConnectionRequestInput {
     #[graphql(name = "sessionID")]
     pub session_id: ID,
     pub answer: SessionDescriptionInput,
@@ -56,12 +56,13 @@ pub struct ConnectToHostInput {
     pub offer: async_graphql::Json<serde_json::Value>,
 }
 
-pub struct Mutation;
+#[derive(Default, Clone, Copy)]
+pub struct HostMutation;
 
 #[async_graphql::Object]
-impl Mutation {
+impl HostMutation {
     #[instrument(skip(self, ctx))]
-    async fn register_machines<'ctx>(
+    async fn register_machines_from_host<'ctx>(
         &self,
         ctx: &'ctx Context<'_>,
         input: RegisterMachinesInput,
@@ -136,17 +137,19 @@ impl Mutation {
         })
     }
 
+    /// After a connection has been received by the host (via `connectionRequested`) the
+    /// host MAY choose to respond to the client via `respondToConnectionRequest`.
     #[instrument(skip(self, ctx))]
-    async fn answer_signal<'ctx>(
+    async fn respond_to_connection_request<'ctx>(
         &self,
         ctx: &'ctx Context<'_>,
-        input: AnswerSignalInput,
+        input: RespondToConnectionRequestInput,
     ) -> FieldResult<Option<crate::Void>> {
         let auth: &crate::AuthContext = ctx.data()?;
 
         let host = auth.require_host()?;
 
-        let AnswerSignalInput {
+        let RespondToConnectionRequestInput {
             session_id,
             answer,
             ice_candidates,
@@ -199,7 +202,7 @@ impl Mutation {
     //     Ok(None)
     // }
 
-    async fn remove_user_from_host<'ctx>(
+    async fn remove_host_from_user<'ctx>(
         &self,
         ctx: &'ctx Context<'_>,
         machine_id: ID
