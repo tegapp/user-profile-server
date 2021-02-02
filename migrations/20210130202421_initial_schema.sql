@@ -17,10 +17,10 @@ CREATE UNIQUE INDEX u_firebase_uid ON users (firebase_uid);
 CREATE TABLE hosts (
     id BIGSERIAL PRIMARY KEY,
 
-    identity_public_key TEXT NOT NULL,
     -- server_version TEXT NOT NULL,
     -- name TEXT,
     slug TEXT NOT NULL,
+    identity_public_key TEXT NOT NULL,
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
