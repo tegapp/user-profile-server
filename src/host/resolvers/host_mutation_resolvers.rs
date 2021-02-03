@@ -1,4 +1,3 @@
-use bs58::encode;
 use eyre::{
     eyre,
     Result,
@@ -29,20 +28,13 @@ pub struct RespondToConnectionRequestInput {
     #[graphql(name = "sessionID")]
     pub session_id: ID,
     pub answer: SessionDescriptionInput,
-    pub ice_candidates: Vec<IceCandidateInput>,
+    pub ice_candidates: Vec<async_graphql::Json<serde_json::Value>>,
 }
 
 #[derive(async_graphql::InputObject, Serialize, Debug)]
 pub struct SessionDescriptionInput {
     pub sdp: async_graphql::Json<serde_json::Value>,
-    pub desc_type: async_graphql::Json<serde_json::Value>,
-}
-
-
-#[derive(async_graphql::InputObject, Serialize, Debug)]
-pub struct IceCandidateInput {
-    pub candidate: String,
-    pub mid: String,
+    pub r#type: async_graphql::Json<serde_json::Value>,
 }
 
 #[derive(async_graphql::InputObject, Debug)]
@@ -50,7 +42,7 @@ pub struct IceCandidateInput {
 pub struct SendIceCandidatesInput {
     #[graphql(name = "sessionID")]
     pub session_id: ID,
-    pub ice_candidates: IceCandidateInput,
+    pub ice_candidates: Vec<async_graphql::Json<serde_json::Value>>,
 }
 
 #[derive(async_graphql::InputObject, Debug)]
@@ -106,6 +98,10 @@ impl HostMutation {
         let auth: &crate::AuthContext = ctx.data()?;
         let host_connectors: &crate::HostConnectorsMap = ctx.data()?;
 
+        let ice_servers: &crate::IceServerList = ctx.data()?;
+        let ice_servers = (**ice_servers.load()).clone();
+
+
         let user = auth.require_authorized_user()?;
 
         // Parse the invite
@@ -155,6 +151,7 @@ impl HostMutation {
             invite: input.invite,
             session_id: session_id.clone(),
             offer: input.offer,
+            ice_servers,
         }).await??;
 
         Ok(HostConnection {
@@ -195,11 +192,6 @@ impl HostMutation {
         };
 
         let answer = async_graphql::Json::from(serde_json::to_value(answer)?);
-
-        let ice_candidates = ice_candidates
-            .into_iter()
-            .map(|ic| Ok(async_graphql::Json::from(serde_json::to_value(ic)?)))
-            .collect::<Result<Vec<async_graphql::Json<serde_json::Value>>>>()?;
 
         if let Err(_) = sender.send(HostConnectionResponse {
             answer,

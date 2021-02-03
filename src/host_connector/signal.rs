@@ -9,6 +9,8 @@ use eyre::{
     // Context as _,
 };
 
+use crate::ice_server::IceServer;
+
 use super::HostConnector;
 
 #[xactor::message(result = "Result<()>")]
@@ -22,6 +24,7 @@ pub struct Signal {
     #[graphql(name = "sessionID")]
     pub session_id: ID,
     pub offer: async_graphql::Json<serde_json::Value>,
+    pub ice_servers: Vec<IceServer>,
 }
 
 #[async_trait::async_trait]
