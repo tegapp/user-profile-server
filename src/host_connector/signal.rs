@@ -18,6 +18,7 @@ pub struct Signal {
     pub user_id: async_graphql::ID,
     pub email: Option<String>,
     pub email_verified: bool,
+    pub invite: Option<String>,
     #[graphql(name = "sessionID")]
     pub session_id: ID,
     pub offer: async_graphql::Json<serde_json::Value>,

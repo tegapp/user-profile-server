@@ -6,6 +6,9 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[build-dependencies]
+prost-build = "0.6.1"
+
 [dependencies]
 dotenv = "0.15.0"
 # Using git version until tokio 1.0 support drops in sqlx 0.5
@@ -38,3 +41,4 @@ xactor = "0.7.11"
 nanoid = "0.3.0"
 bs58 = "0.4.0"
 lazy_static = "1.4.0"
+prost = "0.6.1"

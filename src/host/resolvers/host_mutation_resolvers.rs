@@ -1,3 +1,4 @@
+use bs58::encode;
 use eyre::{
     eyre,
     Result,
@@ -6,9 +7,11 @@ use eyre::{
 use serde::Serialize;
 use async_graphql::{Context, FieldResult, ID};
 use host_connector::{HostConnection, HostConnectionResponse, Signal};
+use prost::Message;
 
 use crate::host_connector;
 use crate::host::Host;
+use crate::protos::InviteCode;
 
 #[derive(async_graphql::InputObject, Debug)]
 pub struct RegisterMachinesInput {
@@ -52,7 +55,8 @@ pub struct SendIceCandidatesInput {
 
 #[derive(async_graphql::InputObject, Debug)]
 pub struct ConnectToHostInput {
-    pub host_slug: String,
+    pub host_slug: Option<String>,
+    pub invite: Option<String>,
     pub offer: async_graphql::Json<serde_json::Value>,
 }
 
@@ -104,12 +108,33 @@ impl HostMutation {
 
         let user = auth.require_authorized_user()?;
 
+        // Parse the invite
+        let invite = input.invite
+            .as_ref()
+            .map(|invite| -> Result<_> {
+                let invite = bs58::decode(invite).into_vec()?;
+
+                let invite: InviteCode = Message::decode(&invite[..])?;
+
+                Ok(invite)
+            })
+            .transpose()?;
+
+        let host_slug = if let Some(host_slug) = input.host_slug {
+            host_slug
+        } else if let Some(invite) = invite {
+            // Encode the public key in base58 to get the slug
+            bs58::encode(invite.host_public_key).into_string()
+        } else {
+            Err(eyre!("A hostSlug or invite is required"))?
+        };
+
         let host = sqlx::query_as!(
             Host,
             r#"
                 SELECT * FROM hosts WHERE slug = $1
             "#,
-            input.host_slug,
+            host_slug,
         )
             .fetch_one(db)
             .await?;
@@ -127,6 +152,7 @@ impl HostMutation {
             user_id: user.id.into(),
             email: Some(user.email.clone()),
             email_verified: user.email_verified,
+            invite: input.invite,
             session_id: session_id.clone(),
             offer: input.offer,
         }).await??;

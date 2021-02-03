@@ -8,51 +8,35 @@ use async_graphql::{
     // ID,
     FieldResult,
 };
-use crate::machine::Machine;
+use crate::host::Host;
 
 pub struct MyNamespace;
 
 #[async_graphql::Object]
 impl MyNamespace {
-    async fn machines<'ctx>(
+    async fn hosts<'ctx>(
         &self,
         ctx: &'ctx Context<'_>,
         // slug: Option<String>,
-    ) -> FieldResult<Vec<Machine>> {
+    ) -> FieldResult<Vec<Host>> {
         let db: &crate::Db = ctx.data()?;
         let auth: &crate::AuthContext = ctx.data()?;
 
         let user = auth.require_authorized_user()?;
 
-        // let machines = if let Some(slug) = slug {
-        //     sqlx::query_as!(
-        //         Machine,
-        //         r#"
-        //             SELECT * FROM machines
-        //             INNER JOIN hosts_users ON hosts_users.host_id = machines.host_id
-        //             WHERE hosts_users.user_id=$1 AND machines.slug=$2
-        //         "#,
-        //         user.id,
-        //         slug,
-        //     )
-        //         .fetch_all(db)
-        //         .await
-        //         .wrap_err( "Unable to load my.machines")?
-        // } else {
-        let machines = sqlx::query_as!(
-            Machine,
+        let hosts = sqlx::query_as!(
+            Host,
             r#"
-                SELECT machines.* FROM machines
-                INNER JOIN hosts_users ON hosts_users.host_id = machines.host_id
+                SELECT hosts.* FROM hosts
+                INNER JOIN hosts_users ON hosts_users.host_id = hosts.id
                 WHERE hosts_users.user_id=$1
             "#,
             user.id,
         )
             .fetch_all(db)
             .await
-            .wrap_err( "Unable to load my.machines")?;
-        // };
+            .wrap_err( "Unable to load my.hosts")?;
 
-        Ok(machines)
+        Ok(hosts)
     }
 }

@@ -31,6 +31,7 @@ pub mod host;
 pub mod host_connector;
 pub mod ice_server;
 pub mod machine;
+pub mod protos;
 pub mod resolvers;
 pub mod user;
 
