@@ -38,7 +38,7 @@ fn string_or_seq_string<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error
     deserializer.deserialize_any(StringOrVec(PhantomData))
 }
 
-#[derive(async_graphql::SimpleObject, Serialize, Deserialize, Default, Clone)]
+#[derive(async_graphql::SimpleObject, Serialize, Deserialize, Debug, Default, Clone)]
 pub struct IceServer {
     url: Option<String>,
     #[serde(deserialize_with = "string_or_seq_string")]

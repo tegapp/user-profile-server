@@ -14,7 +14,7 @@ use crate::ice_server::IceServer;
 use super::HostConnector;
 
 #[xactor::message(result = "Result<()>")]
-#[derive(async_graphql::SimpleObject)]
+#[derive(async_graphql::SimpleObject, Debug)]
 pub struct Signal {
     #[graphql(name = "userID")]
     pub user_id: async_graphql::ID,
