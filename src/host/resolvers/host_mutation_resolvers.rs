@@ -66,26 +66,35 @@ impl HostMutation {
         let db: &crate::Db = ctx.data()?;
         let auth: &crate::AuthContext = ctx.data()?;
 
-        let host = auth.require_host()?;
+        async move {
+            let host = auth.require_host()?;
 
-        for m in input.machines.into_iter() {
-            sqlx::query!(
-                r#"
-                    INSERT INTO machines (host_id, name, slug)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (host_id, slug)
-                    DO UPDATE SET
-                        name=$2
-                "#,
-                host.id,
-                m.name,
-                m.slug,
-            )
-                .fetch_one(db)
-                .await?;
+            for m in input.machines.into_iter() {
+                sqlx::query!(
+                    r#"
+                        INSERT INTO machines (host_id, name, slug)
+                        VALUES ($1, $2, $3)
+                        ON CONFLICT (host_id, slug)
+                        DO UPDATE SET
+                            name=$2
+                        RETURNING *
+                    "#,
+                    host.id,
+                    m.name,
+                    m.slug,
+                )
+                    .fetch_one(db)
+                    .await?;
+            }
+
+            eyre::Result::<_>::Ok(None)
         }
-
-        Ok(None)
+            // log the backtrace which is otherwise lost by FieldResult
+            .await
+            .map_err(|err| {
+                warn!("{:?}", err);
+                err.into()
+            })
     }
 
     #[instrument(skip(self, ctx))]

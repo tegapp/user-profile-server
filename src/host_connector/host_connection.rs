@@ -30,7 +30,9 @@ impl HostConnection {
         &self,
         ctx: &'ctx Context<'_>,
     ) -> FieldResult<HostConnectionResponse> {
+        let db: &crate::Db = ctx.data()?;
         let response_senders: &crate::ConnectionResponseSenders = ctx.data()?;
+        let auth: &crate::AuthContext = ctx.data()?;
 
         let key = (self.host.id, self.session_id.clone());
 
@@ -45,6 +47,24 @@ impl HostConnection {
             Duration::from_secs(30),
             receiver,
         ).await??;
+
+        // if the host authenticated the request then add the host to the users' host list
+        if let Some(user) = auth.allow_unauthorized_user() {
+            sqlx::query!(
+                r#"
+                    INSERT INTO hosts_users (user_id, host_id)
+                    VALUES ($1, $2)
+                    ON CONFLICT (user_id, host_id)
+                    DO NOTHING
+                    RETURNING *
+                "#,
+                user.id,
+                self.host.id,
+            )
+                .fetch_one(db)
+                .await?;
+        };
+
 
         Ok(response)
     }

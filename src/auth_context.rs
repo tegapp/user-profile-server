@@ -8,6 +8,7 @@ use async_graphql::extensions::TracingConfig;
 
 use crate::{b58_fingerprint, host::Host, user::User};
 
+#[derive(Debug)]
 pub struct AuthContext {
     user: Option<User>,
     host: Option<Host>,
