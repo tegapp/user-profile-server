@@ -128,7 +128,8 @@ impl AuthContext {
             Err(eyre!("JWT payload field 'selfSignature' must be true"))?;
         }
 
-        let signalling_url = "https:://signalling.tegapp.com";
+        let signalling_url = std::env::var("SIGNALLING_SERVER")
+            .wrap_err("SIGNALLING_SERVER environment variable missing")?;
 
         if payload.audience != signalling_url {
             Err(eyre!("Expected JWT aud: {}, got: {}", signalling_url, payload.audience))?;

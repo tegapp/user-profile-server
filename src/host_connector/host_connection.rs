@@ -56,12 +56,11 @@ impl HostConnection {
                     VALUES ($1, $2)
                     ON CONFLICT (user_id, host_id)
                     DO NOTHING
-                    RETURNING *
                 "#,
                 user.id,
                 self.host.id,
             )
-                .fetch_one(db)
+                .fetch_optional(db)
                 .await?;
         };
 

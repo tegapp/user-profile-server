@@ -34,7 +34,7 @@ CREATE TABLE machines (
     id BIGSERIAL PRIMARY KEY,
 
     host_id BIGINT NOT NULL,
-    FOREIGN KEY (host_id) REFERENCES users (id),
+    FOREIGN KEY (host_id) REFERENCES hosts (id),
 
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE hosts_users (
     FOREIGN KEY (user_id) REFERENCES users (id),
 
     host_id BIGINT NOT NULL,
-    FOREIGN KEY (host_id) REFERENCES users (id),
+    FOREIGN KEY (host_id) REFERENCES hosts (id),
 
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
