@@ -147,7 +147,7 @@ impl HostMutation {
         let connector = host_connectors.get(&host.id)
             .and_then(|weak_addr| weak_addr.upgrade())
             .ok_or_else(|| eyre!(r#"
-                Printer host appears to be offline. \
+                Printer appears to be offline.
                 Make sure it is plugged in and connected to wifi.
             "#))?;
 
