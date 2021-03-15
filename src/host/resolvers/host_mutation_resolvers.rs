@@ -18,6 +18,11 @@ pub struct RegisterMachinesInput {
 }
 
 #[derive(async_graphql::InputObject, Debug)]
+pub struct DeleteMachinesInput {
+    pub machine_slugs: Vec<String>,
+}
+
+#[derive(async_graphql::InputObject, Debug)]
 pub struct MachineInput {
     slug: String,
     name: String,
@@ -86,6 +91,40 @@ impl HostMutation {
                     .fetch_one(db)
                     .await?;
             }
+
+            eyre::Result::<_>::Ok(None)
+        }
+            // log the backtrace which is otherwise lost by FieldResult
+            .await
+            .map_err(|err| {
+                warn!("{:?}", err);
+                err.into()
+            })
+    }
+
+    async fn delete_machines_from_host<'ctx>(
+        &self,
+        ctx: &'ctx Context<'_>,
+        input: DeleteMachinesInput,
+    ) -> FieldResult<Option<crate::Void>> {
+        let db: &crate::Db = ctx.data()?;
+        let auth: &crate::AuthContext = ctx.data()?;
+
+        async move {
+            let host = auth.require_host()?;
+
+            sqlx::query!(
+                r#"
+                    DELETE FROM machines
+                    WHERE
+                        host_id=$1
+                        AND slug = ANY($2)
+                "#,
+                host.id,
+                &input.machine_slugs[..],
+            )
+                .fetch_optional(db)
+                .await?;
 
             eyre::Result::<_>::Ok(None)
         }
