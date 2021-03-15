@@ -53,22 +53,60 @@ impl AuthContext {
         db: crate::Db,
         pem_keys: crate::PemKeyList,
         authorization_header: Option<String>,
+        identity_public_key: Option<String>,
         schema: crate::AppSchema,
         request: async_graphql::Request,
     ) -> std::result::Result<async_graphql_warp::Response, warp::Rejection> {
-        let user = if let Some(authorization_header) = authorization_header {
+        let jwt = if let Some(authorization_header) = authorization_header {
+            if !authorization_header.starts_with("Bearer") {
+                warn!("Invalid authorization header");
+                return Err(warp::reject::custom(crate::InternalServerError))
+            }
+
+            Some(authorization_header[7..].to_string())
+        } else {
+            None
+        };
+
+        let mut auth = if let (
+            Some(identity_public_key),
+            Some(jwt),
+         ) = (
+             identity_public_key.as_ref(),
+             jwt.as_ref(),
+          ) {
+            Self::host_auth(
+                &db,
+                identity_public_key,
+                jwt,
+            )
+                .await
+                .map_err(|err| {
+                    warn!("host auth error {:?}", err);
+                    warp::reject::custom(crate::InternalServerError)
+                })?
+        } else {
+            AuthContext {
+                user: None,
+                host: None,
+            }
+        };
+
+        auth.user = if identity_public_key.is_some() {
+            None
+        } else if let Some(jwt) = jwt {
             let pem_keys = pem_keys.clone();
 
             let user = crate::user::authorize_user(
                 &db,
                 &pem_keys,
-                authorization_header,
+                jwt,
             ).await;
 
             let user = match user {
                 Ok(user) => user,
                 Err(err) => {
-                    warn!("{:?}", err);
+                    warn!("user auth error: {:?}", err);
                     return Err(warp::reject::custom(crate::InternalServerError))
                 }
             };
@@ -76,11 +114,6 @@ impl AuthContext {
             Some(user)
         } else {
             None
-        };
-
-        let auth = AuthContext {
-            user,
-            host: None,
         };
 
         let request = request
@@ -113,10 +146,29 @@ impl AuthContext {
             self_signed_jwt,
         } = serde_json::from_value(json)?;
 
+        let auth = Self::host_auth(
+            &db,
+            &identity_public_key,
+            &self_signed_jwt,
+        ).await?;
+
+        let mut data = async_graphql::Data::default();
+        data.insert(auth);
+        data.insert(TracingConfig::default());
+        // data.insert(TracingConfig::default().parent_span(ws_root_span.clone()));
+
+        Ok(data)
+    }
+
+    async fn host_auth(
+        db: &crate::Db,
+        identity_public_key: &String,
+        self_signed_jwt: &String,
+) -> Result<AuthContext> {
         // Verify the jwt signature
         let (_, payload) = frank_jwt::decode(
-            &self_signed_jwt,
-            &identity_public_key,
+            self_signed_jwt,
+            identity_public_key,
             frank_jwt::Algorithm::ES256,
             &frank_jwt::ValidationOptions::default(),
         )?;
@@ -141,7 +193,7 @@ impl AuthContext {
             "SELECT * FROM hosts WHERE identity_public_key = $1",
             identity_public_key,
         )
-            .fetch_optional(&db)
+            .fetch_optional(db)
             .await?;
 
         let host = if let Some(host) = host {
@@ -159,21 +211,14 @@ impl AuthContext {
                 identity_public_key,
                 slug,
             )
-                .fetch_one(&db)
+                .fetch_one(db)
                 .await?
         };
 
-        let auth = AuthContext {
+        Ok(AuthContext {
             user: None,
             host: Some(host),
-        };
-
-        let mut data = async_graphql::Data::default();
-        data.insert(auth);
-        data.insert(TracingConfig::default());
-        // data.insert(TracingConfig::default().parent_span(ws_root_span.clone()));
-
-        Ok(data)
+        })
     }
 
     pub fn user_id(&self) -> Option<crate::DbId> {

@@ -12,15 +12,8 @@ use super::{User, jwt::{validate_jwt}};
 pub async fn authorize_user(
     db: &crate::Db,
     pem_keys: &PemKeyList,
-    authorization_header: String,
+    jwt: String,
 ) -> Result<User> {
-    // TODO: parse and verify the authorization token
-    if !authorization_header.starts_with("Bearer") {
-        Err(eyre!("Invalid authorization header"))?;
-    }
-
-    let jwt = authorization_header[7..].to_string();
-
     let payload = validate_jwt(pem_keys, jwt).await?;
 
     trace!("payload: {:?}", payload);
