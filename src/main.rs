@@ -172,8 +172,8 @@ async fn main() -> Result<()> {
     let db_clone = db.clone();
     let pem_clone = pem_keys.clone();
     let graphql_post = async_graphql_warp::graphql(schema.clone())
-        .and(warp::header::optional::<String>("authorization"))
-        .and(warp::header::optional::<String>("x-host-identity-public-key"))
+        .and(warp::header::optional::<String>("Authorization"))
+        .and(warp::header::optional::<String>("X-Host-Identity-Public-Key"))
         .and(warp::body::content_length_limit(1024 * 1024))
         .and_then(move |
             graphql_tuple,

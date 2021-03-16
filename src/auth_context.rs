@@ -68,13 +68,23 @@ impl AuthContext {
             None
         };
 
+        let received_public_key = identity_public_key.is_some();
+
+        let identity_public_key = identity_public_key
+            .and_then(|b64| {
+                base64::decode(b64).ok().and_then(|chars|
+                    String::from_utf8(chars).ok()
+                )
+            });
+
         let mut auth = if let (
             Some(identity_public_key),
             Some(jwt),
          ) = (
              identity_public_key.as_ref(),
              jwt.as_ref(),
-          ) {
+        ) {
+
             Self::host_auth(
                 &db,
                 identity_public_key,
@@ -92,7 +102,7 @@ impl AuthContext {
             }
         };
 
-        auth.user = if identity_public_key.is_some() {
+        auth.user = if received_public_key {
             None
         } else if let Some(jwt) = jwt {
             let pem_keys = pem_keys.clone();
