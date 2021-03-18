@@ -161,7 +161,7 @@ dependencies = [
 [[package]]
 name = "async-graphql"
 version = "2.6.0"
-source = "git+https://github.com/d1plo1d/async-graphql.git?branch=fix/sec-websocket-key#5640a8f354f6ba8cf4feba3cb823b618ca1c437f"
+source = "git+https://github.com/async-graphql/async-graphql.git#d5792c09a9390662328c60ce3df122b5f842aa92"
 dependencies = [
  "async-graphql-derive",
  "async-graphql-parser",
@@ -200,7 +200,7 @@ dependencies = [
 [[package]]
 name = "async-graphql-derive"
 version = "2.6.0"
-source = "git+https://github.com/d1plo1d/async-graphql.git?branch=fix/sec-websocket-key#5640a8f354f6ba8cf4feba3cb823b618ca1c437f"
+source = "git+https://github.com/async-graphql/async-graphql.git#d5792c09a9390662328c60ce3df122b5f842aa92"
 dependencies = [
  "Inflector",
  "async-graphql-parser",
@@ -215,7 +215,7 @@ dependencies = [
 [[package]]
 name = "async-graphql-parser"
 version = "2.5.9"
-source = "git+https://github.com/d1plo1d/async-graphql.git?branch=fix/sec-websocket-key#5640a8f354f6ba8cf4feba3cb823b618ca1c437f"
+source = "git+https://github.com/async-graphql/async-graphql.git#d5792c09a9390662328c60ce3df122b5f842aa92"
 dependencies = [
  "async-graphql-value",
  "pest",
@@ -227,7 +227,7 @@ dependencies = [
 [[package]]
 name = "async-graphql-value"
 version = "2.5.9"
-source = "git+https://github.com/d1plo1d/async-graphql.git?branch=fix/sec-websocket-key#5640a8f354f6ba8cf4feba3cb823b618ca1c437f"
+source = "git+https://github.com/async-graphql/async-graphql.git#d5792c09a9390662328c60ce3df122b5f842aa92"
 dependencies = [
  "serde",
  "serde_json",
@@ -236,7 +236,7 @@ dependencies = [
 [[package]]
 name = "async-graphql-warp"
 version = "2.6.0"
-source = "git+https://github.com/d1plo1d/async-graphql.git?branch=fix/sec-websocket-key#5640a8f354f6ba8cf4feba3cb823b618ca1c437f"
+source = "git+https://github.com/async-graphql/async-graphql.git#d5792c09a9390662328c60ce3df122b5f842aa92"
 dependencies = [
  "async-graphql",
  "futures-util",
