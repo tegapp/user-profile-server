@@ -149,63 +149,78 @@ impl HostMutation {
         let ice_servers: &crate::IceServerList = ctx.data()?;
         let ice_servers = (**ice_servers.load()).clone();
 
+        async move {
+            let user = auth.require_authorized_user()?;
 
-        let user = auth.require_authorized_user()?;
+            // Parse the invite
+            let invite = input.invite
+                .as_ref()
+                .map(|invite| -> Result<_> {
+                    let invite = bs58::decode(invite).into_vec()?;
 
-        // Parse the invite
-        let invite = input.invite
-            .as_ref()
-            .map(|invite| -> Result<_> {
-                let invite = bs58::decode(invite).into_vec()?;
+                    let invite: InviteCode = Message::decode(&invite[..])?;
 
-                let invite: InviteCode = Message::decode(&invite[..])?;
+                    Ok(invite)
+                })
+                .transpose()?;
 
-                Ok(invite)
+            let host_slug = if let Some(host_slug) = input.host_slug {
+                host_slug
+            } else if let Some(invite) = invite {
+                // Encode the public key in base58 to get the slug
+                bs58::encode(invite.host_public_key).into_string()
+            } else {
+                Err(eyre!("A hostSlug or invite is required"))?
+            };
+
+            let host = sqlx::query_as!(
+                Host,
+                r#"
+                    SELECT * FROM hosts WHERE slug = $1
+                "#,
+                host_slug,
+            )
+                .fetch_one(db)
+                .await
+                .wrap_err_with(||
+                    r#"
+                    Printer appears to be offline.
+                    Make sure it is plugged in and connected to wifi.
+                    "#
+                )?;
+
+            let connector = host_connectors.get(&host.id)
+                .and_then(|weak_addr| weak_addr.upgrade())
+                .ok_or_else(|| eyre!(
+                    r#"
+                    Printer appears to be offline.
+                    Make sure it is plugged in and connected to wifi.
+                    "#
+                ))?;
+
+            let session_id: ID = nanoid!().into();
+
+            connector.call(Signal {
+                user_id: user.id.into(),
+                email: Some(user.email.clone()),
+                email_verified: user.email_verified,
+                invite: input.invite,
+                session_id: session_id.clone(),
+                offer: input.offer,
+                ice_servers,
+            }).await??;
+
+            Result::<_>::Ok(HostConnection {
+                host,
+                session_id,
             })
-            .transpose()?;
-
-        let host_slug = if let Some(host_slug) = input.host_slug {
-            host_slug
-        } else if let Some(invite) = invite {
-            // Encode the public key in base58 to get the slug
-            bs58::encode(invite.host_public_key).into_string()
-        } else {
-            Err(eyre!("A hostSlug or invite is required"))?
-        };
-
-        let host = sqlx::query_as!(
-            Host,
-            r#"
-                SELECT * FROM hosts WHERE slug = $1
-            "#,
-            host_slug,
-        )
-            .fetch_one(db)
-            .await?;
-
-        let connector = host_connectors.get(&host.id)
-            .and_then(|weak_addr| weak_addr.upgrade())
-            .ok_or_else(|| eyre!(r#"
-                Printer appears to be offline.
-                Make sure it is plugged in and connected to wifi.
-            "#))?;
-
-        let session_id: ID = nanoid!().into();
-
-        connector.call(Signal {
-            user_id: user.id.into(),
-            email: Some(user.email.clone()),
-            email_verified: user.email_verified,
-            invite: input.invite,
-            session_id: session_id.clone(),
-            offer: input.offer,
-            ice_servers,
-        }).await??;
-
-        Ok(HostConnection {
-            host,
-            session_id,
-        })
+        }
+            // log the backtrace which is otherwise lost by FieldResult
+            .await
+            .map_err(|err| {
+                warn!("{:?}", err);
+                err.into()
+            })
     }
 
     /// After a connection has been received by the host (via `connectionRequested`) the
