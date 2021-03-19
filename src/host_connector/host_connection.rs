@@ -4,7 +4,8 @@
 //     Context as _,
 // };
 use async_graphql::{Context, FieldResult, ID};
-use std::{boxed::Box, time::Duration};
+use dashmap::DashMap;
+use std::{boxed::Box, hash::Hash, sync::Arc, time::Duration};
 use futures::channel::oneshot;
 
 use crate::host::Host;
@@ -18,6 +19,24 @@ pub struct HostConnection {
 pub struct HostConnectionResponse {
     pub answer: async_graphql::Json<serde_json::Value>,
     pub ice_candidates: Vec<async_graphql::Json<serde_json::Value>>,
+}
+
+struct DashMapDeleteOnDrop<K, V>
+where
+    K: Eq + Hash
+{
+    dash_map: Arc<DashMap<K, V>>,
+    key: K,
+}
+
+impl<K, V> Drop for DashMapDeleteOnDrop<K, V>
+where
+    K: Eq + Hash
+{
+    fn drop(&mut self) {
+        // trace!("Drop: {:?}", self.key);
+        let _ = self.dash_map.remove(&self.key);
+    }
 }
 
 #[async_graphql::Object]
@@ -40,6 +59,11 @@ impl HostConnection {
             sender,
             receiver
         ) = oneshot::channel();
+
+        let drop_session = DashMapDeleteOnDrop {
+            dash_map: Arc::clone(response_senders),
+            key: key.clone(),
+        };
 
         let _ = response_senders.insert(key, sender);
 
@@ -64,6 +88,7 @@ impl HostConnection {
                 .await?;
         };
 
+        drop(drop_session);
 
         Ok(response)
     }

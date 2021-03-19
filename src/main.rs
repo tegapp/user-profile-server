@@ -41,10 +41,10 @@ type DbId = i64;
 type PemKeyList = Arc<ArcSwap<Vec<PemKey>>>;
 type IceServerList = Arc<ArcSwap<Vec<IceServer>>>;
 type HostConnectorsMap = Arc<DashMap<crate::DbId, xactor::WeakAddr<HostConnector>>>;
-type ConnectionResponseSenders = DashMap<
+type ConnectionResponseSenders = Arc<DashMap<
     (crate::DbId, async_graphql::ID),
     oneshot::Sender<HostConnectionResponse>,
->;
+>>;
 
 pub fn unauthorized() -> Error {
     eyre!("Unauthorized Access")
@@ -123,7 +123,7 @@ async fn main() -> Result<()> {
     )));
 
     let host_connectors: HostConnectorsMap = Arc::new(DashMap::new());
-    let connection_response_senders: ConnectionResponseSenders = DashMap::new();
+    let connection_response_senders: ConnectionResponseSenders = Arc::new(DashMap::new());
 
     let schema = Schema::build(
         Query::default(),
