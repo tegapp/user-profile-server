@@ -14,8 +14,8 @@ dotenv = "0.15.0"
 # Using git version until tokio 1.0 support drops in sqlx 0.5
 sqlx = { git = "https://github.com/launchbadge/sqlx.git", features = [ "runtime-tokio-rustls", "postgres", "offline", "json", "macros", "chrono" ] }
 anyhow = "1.0"
-async-trait = "0.1.36"
-tracing = "0.1.22"
+async-trait = "0.1.48"
+tracing = "0.1.25"
 tracing-subscriber = "0.2"
 tracing-futures = "0.2.4"
 warp = "0.3.0"
@@ -29,10 +29,16 @@ surf = "2.1.0"
 http-client = { version = "1.1.1", features = ["native_client"] }
 openssl = "0.10.32"
 gravatar = "0.2.0"
-# async-graphql-warp = "2.5.1"
-# async-graphql = "2.5.1"
-async-graphql-warp = { git = "https://github.com/async-graphql/async-graphql.git" }
-async-graphql = { git = "https://github.com/async-graphql/async-graphql.git" }
+
+# async-graphql = { git = "https://github.com/async-graphql/async-graphql.git", features = ["tracing",  "chrono", "url"] }
+# async-graphql-warp = { git = "https://github.com/async-graphql/async-graphql.git" }
+
+# async-graphql = { version = "2.6.5", features = ["tracing",  "chrono", "url"] }
+# async-graphql-warp = "2.6.5"
+
+async-graphql = { git = "https://github.com/d1plo1d/async-graphql.git", branch="fix/warp-websocket-pings", features = ["tracing",  "chrono", "url"] }
+async-graphql-warp = { git = "https://github.com/d1plo1d/async-graphql.git", branch="fix/warp-websocket-pings" }
+
 tokio = { version = "1.1.0", features = ["full"] }
 arc-swap = "1.2.0"
 eyre = "0.6.5"
