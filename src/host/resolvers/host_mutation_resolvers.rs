@@ -189,6 +189,29 @@ impl HostMutation {
                     "#
                 )?;
 
+
+            // if the user is consuming an invite code then authorize the host on the user's account
+            //
+            // TODO: In future share links may be added for temporary guest access - those temporary
+            // "invites" should not add a host_users entry to the user's account.
+            let add_to_host_users = input.invite.is_some();
+            if add_to_host_users {
+                sqlx::query!(
+                    r#"
+                        INSERT INTO host_users (user_id, host_id, authorized_by_user)
+                        VALUES ($1, $2, True)
+                        ON CONFLICT (user_id, host_id)
+                        DO
+                            UPDATE SET authorized_by_user = TRUE
+                        RETURNING id
+                    "#,
+                    user.id,
+                    host.id,
+                )
+                    .fetch_one(db)
+                    .await?;
+            };
+
             let connector = host_connectors.get(&host.id)
                 .and_then(|weak_addr| weak_addr.upgrade())
                 .ok_or_else(|| eyre!(
@@ -213,6 +236,7 @@ impl HostMutation {
             Result::<_>::Ok(HostConnection {
                 host,
                 session_id,
+                add_to_host_users,
             })
         }
             // log the backtrace which is otherwise lost by FieldResult
@@ -297,7 +321,7 @@ impl HostMutation {
 
         sqlx::query!(
             "
-                DELETE FROM hosts_users WHERE user_id = $1 AND id = $2
+                DELETE FROM host_users WHERE user_id = $1 AND id = $2
             ",
             user.id,
             machine_id,

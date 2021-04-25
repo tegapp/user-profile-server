@@ -28,8 +28,11 @@ impl MyNamespace {
             Host,
             r#"
                 SELECT hosts.* FROM hosts
-                INNER JOIN hosts_users ON hosts_users.host_id = hosts.id
-                WHERE hosts_users.user_id=$1
+                INNER JOIN host_users ON
+                    host_users.host_id = hosts.id
+                    AND host_users.authorized_by_user = TRUE
+                    AND host_users.authorized_by_host = TRUE
+                WHERE host_users.user_id=$1
             "#,
             user.id,
         )

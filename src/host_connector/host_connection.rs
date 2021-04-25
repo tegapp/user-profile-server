@@ -13,6 +13,7 @@ use crate::host::Host;
 pub struct HostConnection {
     pub host: Host,
     pub session_id: ID,
+    pub add_to_host_users: bool,
 }
 
 #[derive(async_graphql::SimpleObject)]
@@ -72,20 +73,23 @@ impl HostConnection {
             receiver,
         ).await??;
 
-        // if the host authenticated the request then add the host to the users' host list
-        if let Some(user) = auth.allow_unauthorized_user() {
-            sqlx::query!(
-                r#"
-                    INSERT INTO hosts_users (user_id, host_id)
-                    VALUES ($1, $2)
-                    ON CONFLICT (user_id, host_id)
-                    DO NOTHING
-                "#,
-                user.id,
-                self.host.id,
-            )
-                .fetch_optional(db)
-                .await?;
+        if self.add_to_host_users {
+            if let Some(user) = auth.allow_unauthorized_user() {
+                sqlx::query!(
+                    r#"
+                        INSERT INTO host_users (user_id, host_id, authorized_by_host)
+                        VALUES ($1, $2, True)
+                        ON CONFLICT (user_id, host_id)
+                        DO
+                            UPDATE SET authorized_by_host = TRUE
+                        RETURNING id
+                    "#,
+                    user.id,
+                    self.host.id,
+                )
+                    .fetch_one(db)
+                    .await?;
+            }
         };
 
         drop(drop_session);
